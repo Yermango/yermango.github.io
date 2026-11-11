@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ER Operadores</string>
+    <!-- Dirección de la app. Si algún día cambia, se cambia aquí. -->
+    <string name="url_app" translatable="false">https://yermango.github.io/</string>
+</resources>

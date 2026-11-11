@@ -1,0 +1,46 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'mx.estrellaroja.stu'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'mx.estrellaroja.stu'
+        minSdk 21          // Android 5 en adelante: sirve en teléfonos viejitos
+        targetSdk 34
+        // Cada vez que GitHub arma el APK, sube el número de versión solo
+        versionCode((System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger())
+        versionName '1.' + (System.getenv('GITHUB_RUN_NUMBER') ?: '0')
+    }
+
+    // Firma de la app. NO borres firma.jks: sin ella no se puede actualizar el APK.
+    signingConfigs {
+        firma {
+            storeFile file('firma.jks')
+            storePassword 'iia48bdkLyiYJZqn5UeL'
+            keyAlias 'er'
+            keyPassword 'iia48bdkLyiYJZqn5UeL'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.firma
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
