@@ -1,0 +1,38 @@
+{
+ "name": "ER Operadores STU",
+ "short_name": "ER Operadores",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "orientation": "portrait",
+ "background_color": "#ffffff",
+ "theme_color": "#0b5ed7",
+ "lang": "es-MX",
+ "icons": [
+  {
+   "src": "icono-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icono-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icono-maskable-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ],
+ "id": "./",
+ "description": "Diésel, lavado, taller y vueltas para operadores del servicio STU de Estrella Roja.",
+ "categories": [
+  "business",
+  "productivity"
+ ],
+ "prefer_related_applications": false
+}
