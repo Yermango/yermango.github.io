@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "mx.estrellaroja.operadores",
+        "sha256_cert_fingerprints": ["82:2B:70:95:42:5A:78:8B:3A:55:70:BE:79:3B:D3:27:33:B5:9E:37:FC:CD:7F:2C:DF:13:DD:8B:65:18:CA:CB"]
+      }
+    }]
