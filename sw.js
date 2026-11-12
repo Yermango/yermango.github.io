@@ -1,5 +1,5 @@
 // Guarda la app en el teléfono: abre al instante y casi sin datos.
-const V = 'esto-v1.7';
+const V = 'esto-v2.2';
 self.addEventListener('install', e => { e.waitUntil(caches.open(V).then(c => c.addAll(['./', 'index.html', 'manifest.json', 'logo.png', 'icono-192.png']))); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== V).map(x => caches.delete(x))))); self.clients.claim(); });
 self.addEventListener('fetch', e => {
