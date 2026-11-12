@@ -30,7 +30,7 @@ button:disabled{opacity:.45}
 input,select,textarea{width:100%;font:18px system-ui,sans-serif;padding:12px 14px;border:2px solid var(--linea);border-radius:14px;background:var(--carta);color:var(--tinta)}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pri)}
 label{display:block;font-size:15px;font-weight:600;margin:12px 0 6px}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.g2>*{min-width:0}input[type=date]{min-width:0;max-width:100%}
 .chip{display:inline-block;padding:4px 11px;border-radius:99px;font-size:13px;font-weight:800;background:var(--linea);color:var(--tinta)}
 .ok{color:var(--ok)}.warn{color:var(--warn)}.mal{color:var(--mal)}
 .chip.ok{background:#dff3e7;color:var(--ok)}.chip.warn{background:#fdeed3;color:var(--warn)}.chip.mal{background:#fde2e3;color:var(--mal)}
@@ -50,7 +50,7 @@ nav a.on{color:var(--pri2)}
 .aviso{padding:14px;border-radius:16px;background:var(--suave);font-size:15px;margin-bottom:12px}
 .err{color:var(--mal);font-size:15px;font-weight:600;margin-top:8px;min-height:1em}
 .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--tinta);color:var(--carta);padding:12px 18px;border-radius:999px;font-size:15px;font-weight:600;z-index:20;max-width:90%}
-.hoja{position:fixed;inset:0;background:#0009;z-index:15;display:flex;align-items:flex-end}
+.hoja{position:fixed;top:0;right:0;bottom:0;left:0;background:#0009;z-index:15;display:flex;align-items:flex-end}
 .hoja>div{background:var(--carta);width:100%;max-width:560px;margin:0 auto;border-radius:24px 24px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));max-height:88vh;overflow:auto}
 .seg{display:flex;border:2px solid var(--pri);border-radius:999px;overflow:hidden;margin-bottom:12px}
 .seg button{border-radius:0;background:transparent;color:var(--pri2);font-weight:700;padding:10px;min-height:44px}
@@ -83,6 +83,26 @@ button.sec.on{background:var(--pri);color:#fff}button.sec.on span{color:#fff!imp
 <body>
 <div id="app"></div>
 <script>
+/* Si algo impide que la app arranque (teléfono con visor viejo, red de la empresa bloqueada), se explica en pantalla en vez de quedar en blanco. */
+window.__ok = false;
+function __falla(m) {
+  if (window.__ok) return;
+  var d = document.getElementById('app'); if (!d) return;
+  var v = (navigator.userAgent.match(/Chrome\/(\d+)/) || [])[1] || '?';
+  d.innerHTML = '<div style="font:16px/1.45 sans-serif;padding:28px 20px;color:#14213d;max-width:520px;margin:0 auto">' +
+    '<p style="font-size:22px;font-weight:800;margin:0 0 10px">No se pudo abrir la app</p>' +
+    '<p>Visor del teléfono: Chrome ' + v + (+v && +v < 70 ? ' (muy viejo)' : '') + '</p>' +
+    '<p><b>1.</b> En Play Store actualiza <b>Android System WebView</b> y <b>Google Chrome</b>.</p>' +
+    '<p><b>2.</b> Si el teléfono es de la empresa (Sophos), pide a sistemas que permita: <b>yermango.github.io</b> y <b>supabase.co</b>.</p>' +
+    '<p style="color:#5f6b7a;font-size:13px;word-break:break-all">Detalle: ' + String(m).replace(/</g, '&lt;') + '</p>' +
+    '<button onclick="location.reload()" style="border:0;border-radius:999px;background:#0b5ed7;color:#fff;font:700 16px sans-serif;padding:14px;width:100%">Intentar de nuevo</button>' +
+    (window.Android && Android.abrirTienda ? '<button onclick="Android.abrirTienda()" style="margin-top:10px;border:2px solid #0b5ed7;border-radius:999px;background:#fff;color:#0b5ed7;font:700 16px sans-serif;padding:12px;width:100%">Actualizar el visor en Play Store</button>' : '') + '</div>';
+}
+window.onerror = function (m) { __falla(m); };
+setTimeout(function () { __falla('La app no terminó de cargar en 15 segundos. Revisa tu internet.'); }, 15000);
+if (!Object.fromEntries) Object.fromEntries = function (a) { var o = {}; Array.prototype.forEach.call(a, function (p) { o[p[0]] = p[1]; }); return o; };
+</script>
+<script>
 /* Si el teléfono tiene activado "Sitio para computadoras", la página se ve diminuta: aquí se corrige */
 (function () { try { const corto = Math.min(screen.width, screen.height);
   if (navigator.maxTouchPoints > 0 && corto < 700 && innerWidth > corto * 1.4) document.documentElement.style.zoom = (innerWidth / corto).toFixed(3); } catch (e) {} })();
@@ -91,11 +111,12 @@ button.sec.on{background:var(--pri);color:#fff}button.sec.on span{color:#fff!imp
    Vacío = modo demostración (datos de prueba en el teléfono).
    ===================================================================== */
 const CFG = { url: 'https://vtotyeilmskrgequjhou.supabase.co', key: 'sb_publishable_0oMOHhqNcqfU0ylqw3XOpg_2ve38KOU', vapid: '' };   // vapid = llave pública para avisos push (ver LEEME)
-const VERSION = '1.7';
+const VERSION = '2.2';
 
 /* ---------- utilidades ---------- */
+const nz = (a, b) => a === null || a === undefined ? b : a;
 const $ = s => document.querySelector(s);
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc = s => String(nz(s, '')).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad = n => String(n).padStart(2, '0');
 const iso = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
 const hoy = () => iso(new Date());
@@ -136,7 +157,9 @@ const Remoto = (() => {
     ses = await r.json(); LS.set('esto_ses', ses);
   }
   async function req(path, opt = {}, otra) {
-    const r = await fetch(CFG.url + path, { ...opt, headers: { ...H(), ...(opt.headers || {}) } });
+    let r;
+    try { r = await fetch(CFG.url + path, { ...opt, headers: { ...H(), ...(opt.headers || {}) } }); }
+    catch (e) { throw new Error('Sin conexión con el servidor. Revisa tu internet. Si el teléfono es de la empresa, pide a sistemas que permita supabase.co'); }
     if (r.status === 401 && ses && !otra) { await refrescar(); return req(path, opt, true); }
     const txt = await r.text(); let j = null; try { j = txt ? JSON.parse(txt) : null; } catch (e) {}
     if (!r.ok) throw new Error((j && (j.message || j.msg || j.error_description)) || 'Error de conexión');
@@ -156,7 +179,7 @@ const Remoto = (() => {
     async entrar(u, p) {
       const correo = await rpc('resolver_usuario', { p: u });
       if (!correo) throw new Error('Usuario no encontrado');
-      const r = await fetch(CFG.url + '/auth/v1/token?grant_type=password', { method: 'POST', headers: { apikey: CFG.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: correo, password: p }) });
+      let r; try { r = await fetch(CFG.url + '/auth/v1/token?grant_type=password', { method: 'POST', headers: { apikey: CFG.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: correo, password: p }) }); } catch (e) { throw new Error('Sin conexión con el servidor. Revisa tu internet. Si el teléfono es de la empresa, pide a sistemas que permita supabase.co'); }
       if (!r.ok) throw new Error('Contraseña incorrecta');
       ses = await r.json(); LS.set('esto_ses', ses);
     },
@@ -164,7 +187,8 @@ const Remoto = (() => {
     async yo() { const id = ses.user.id; const r = await get('perfiles', 'select=usuario,clave,nombre,rol&id=eq.' + id); return r[0]; },
     corridas: (f, clave) => get('corridas', 'select=id,hora,hora_fin,tipo,tipo_ruta,ruta,unidad,clave,km_programado,km_real,proxima_ruta&fecha=eq.' + f + (clave ? '&clave=eq.' + clave : '') + '&order=hora.asc.nullslast'),
     operadores: () => get('operadores', 'select=clave,nombre,busup,estatus,ruta_asignada,unidad_base&order=nombre'),
-    unidades: () => get('unidades', 'select=numero,marca,modelo,capacidad_tanque_l,capacidad_confirmada,meta_km_l&order=numero'),
+    unidades: () => get('unidades', 'select=numero,marca,modelo,capacidad_tanque_l,capacidad_confirmada,meta_km_l,minimo_km_l,ruta_rend,km_dia_ref&order=numero'),
+    estadoTanque: u => rpc('estado_tanque', u ? { p_unidad: u } : {}),
     lavadoConfig: async () => (await get('lavado_config', 'select=*'))[0],
     lavados: (a, b) => get('lavados', 'select=id,fecha,hora,unidad,clave,nombre,estado,nota&estado=neq.cancelado&fecha=gte.' + a + '&fecha=lte.' + b + '&order=fecha,hora'),
     agendar: (fecha, hora, unidad) => rpc('agendar_lavado', { p_fecha: fecha, p_hora: hora, p_unidad: unidad }),
@@ -202,6 +226,12 @@ const Remoto = (() => {
     cargarGps: (filas, nombre) => rpc('cargar_km_gps', { p_filas: filas, p_nombre: nombre }),
     guardarPush: s => req('/rest/v1/push_subs', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify(s) }),
     borrarPush: endpoint => del('push_subs', 'endpoint=eq.' + encodeURIComponent(endpoint)),
+    miUnidad: () => rpc('mi_unidad', {}),
+    cambiarUnidad: (u, m) => rpc('cambiar_unidad', { p_unidad: u, p_motivo: m }),
+    cambiosUnidad: (a, b) => todo('cambios_unidad?select=*&order=id.desc&fecha=gte.' + a + '&fecha=lte.' + b),
+    bitacora: (a, b) => todo('bitacora?select=*&order=id.desc&creado=gte.' + a + 'T00:00:00-06:00&creado=lt.' + addD(b, 1) + 'T00:00:00-06:00'),
+    registrar: (t, d) => rpc('registrar', { p_tipo: t, p_detalle: d }),
+    marcarVistos: () => rpc('marcar_cambios_vistos', {}),
     fallas: desde => get('fallas', 'select=*&creado=gte.' + desde + '&order=creado.desc'),
     reportarFalla: (u, c, d, g, v, h) => rpc('reportar_falla', { p_unidad: u, p_categoria: c, p_descripcion: d, p_gravedad: g, p_veces: v, p_desde: h }),
     confirmarFalla: id => rpc('confirmar_falla', { p_id: id }),
@@ -215,12 +245,13 @@ const mkDemo = () => {
   const base = { tickets: [], lecturas: [], lavados: [], reportes: [], tags: [], seq: 1,
     cap: {}, cfg: { hora_inicio: '08:00', hora_fin: '16:00', comida_inicio: '13:00', comida_fin: '14:00', minutos: 60, cupo: 1, dias: [1, 2, 3, 4, 5] },
     ajustes: { meta_km_l: '3.8', tolerancia_pct: '7', taller_dias: '1,3,5' }, fallas: [],
-    guia: [{"orden": 1, "titulo": "¿Qué es el servicio?", "texto": "Llevamos a los alumnos de la BUAP. Trabajamos para Estrella Roja.\n- Cada día revisa tus vueltas en Vueltas.\n- Si tienes una duda, pregunta a tu supervisor."}, {"orden": 2, "titulo": "Antes de salir", "texto": "- Revisa tu unidad.\n- Entra a Diésel.\n- Mueve la flecha como la ves en tu tablero.\n- Escribe los kilómetros del tablero.\n- Toca Guardar."}, {"orden": 3, "titulo": "Cuando cargas diésel", "texto": "- Pide tu ticket en la gasolinera.\n- Entra a Diésel y escribe los litros y los kilómetros.\n- Toca Guardar ticket.\n- Lo comparamos con lo que reporta la gasolinera.\n- La flecha es solo una guía: siempre revisa tu tablero.\n- Si te quedas sin diésel, el rescate, el taller y el diésel los pagas tú (desde $5,000). Carga con tiempo."}, {"orden": 4, "titulo": "Lavado de tu unidad", "texto": "- Es de lunes a viernes, de 8 de la mañana a 4 de la tarde.\n- De 1 a 2 el lavador come: no hay lavado.\n- Aparta tu hora en Lavado. Solo una vez por semana.\n- Llega a tu hora con tu unidad."}, {"orden": 5, "titulo": "Tu bono", "texto": "- Tu bono depende de varias cosas, como tu diésel.\n- En Calcula tu bono ves cuánto llevas.\n- Es un cálculo aproximado. El oficial lo hace supervisión."}],
+    guia: [{"orden": 1, "titulo": "¿Qué es el servicio?", "texto": "Llevamos a los alumnos de la BUAP. Trabajamos para Estrella Roja.\n- Cada día revisa tus vueltas en Vueltas.\n- Si tienes una duda, pregunta a tu supervisor."}, {"orden": 2, "titulo": "Antes de salir", "texto": "- Revisa tu unidad.\n- Entra a Diésel.\n- Mueve la flecha como la ves en tu tablero.\n- Escribe los kilómetros del tablero.\n- Toca Guardar."}, {"orden": 3, "titulo": "Cuando cargas diésel", "texto": "- Pide tu ticket en la gasolinera.\n- Entra a Diésel y escribe los litros y los kilómetros.\n- Toca Guardar ticket.\n- Lo comparamos con lo que reporta la gasolinera.\n- La flecha es solo una guía: siempre revisa tu tablero.\n- Si te quedas sin diésel, el rescate, el taller y el diésel corren por tu cuenta. Carga con tiempo."}, {"orden": 4, "titulo": "Lavado de tu unidad", "texto": "- Es de lunes a viernes, de 8 de la mañana a 4 de la tarde.\n- De 1 a 2 el lavador come: no hay lavado.\n- Aparta tu hora en Lavado. Solo una vez por semana.\n- Llega a tu hora con tu unidad."}, {"orden": 5, "titulo": "Tu bono", "texto": "Tu bono se paga cada semana y se evalúa con 5 indicadores:\n- Siniestros: 30%\n- Puntualidad: 25%\n- Asistencia: 20%\n- Rendimiento de diésel: 15%\n- Excesos de velocidad: 10%\nAdemás: puntualidad de inicio al 100%, rendimiento mínimo del 93% de tu ruta y sin quejas de usuarios, cliente o supervisor.\n- El bono de diésel se mide por semana: la app te dice cuántos litros puedes gastar y cuántos llevas.\n- Se mide de lleno a lleno: todos llenan el lunes, y lo que le entra al tanque el lunes siguiente es lo que gastaste en la semana.\n- La app te dice cuántos litros máximo deben entrar al llenar. Si entran más, no te llega ese 15%.\n- Truco: gasta 1 litro menos cada día y a la semana son 5 litros a tu favor."}, {"orden": 6, "titulo": "Maneja para rendir más diésel", "texto": "- Acelera suave y parejo; evita arrancones.\n- Anticipa los altos y frena con tiempo.\n- No dejes la unidad encendida sin necesidad.\n- Respeta la velocidad: correr gasta más y baja tu bono.\n- Revisa que las llantas tengan buen aire."}],
     criterios: [
-      { orden: 1, nombre: 'Rendimiento de diésel', descripcion: 'Km por litro contra la meta', peso: 40, fuente: 'rendimiento' },
-      { orden: 2, nombre: 'Puntualidad', descripcion: 'Salidas a tiempo según el rol', peso: 30, fuente: 'manual' },
-      { orden: 3, nombre: 'Unidad limpia', descripcion: 'Cumplir tu lavado semanal', peso: 15, fuente: 'manual' },
-      { orden: 4, nombre: 'Sin incidencias', descripcion: 'Sin reportes ni siniestros en el periodo', peso: 15, fuente: 'manual' }] };
+      { orden: 1, nombre: 'Siniestros', descripcion: 'Sin siniestros con responsabilidad', peso: 30, fuente: 'manual' },
+      { orden: 2, nombre: 'Puntualidad', descripcion: 'Puntualidad de inicio al 100%', peso: 25, fuente: 'manual' },
+      { orden: 3, nombre: 'Asistencia', descripcion: 'Asistencia completa, sin faltas injustificadas', peso: 20, fuente: 'manual' },
+      { orden: 4, nombre: 'Rendimiento', descripcion: 'Por semana, de lleno a lleno: no gastar más litros de los permitidos para tu ruta', peso: 15, fuente: 'rendimiento' },
+      { orden: 5, nombre: 'Excesos de velocidad', descripcion: 'Sin excesos de velocidad', peso: 10, fuente: 'manual' }] };
   let S = Object.assign(base, LS.get('esto_demo', {}));
   const save = () => LS.set('esto_demo', S);
   // el horario de prueba se muestra como si fuera de hoy
@@ -235,9 +266,11 @@ const mkDemo = () => {
   let yo = LS.get('esto_demo_yo', null);
   const mando = () => yo && ['admin', 'jefe', 'supervisor'].includes(yo.rol);
   const mio = c => mando() || c === yo.clave;
+  let api = null; const chkU = async u => { if (yo.rol !== 'operador') return; const m = await api.miUnidad(); if (m && u !== m) falla('La unidad ' + u + ' no es la tuya hoy (tienes la ' + m + '). Si te cambiaron, toca "Cambiar unidad".'); };
   const falla = m => { throw new Error(m); };
+  const bit = (tipo, detalle) => { S.bit = S.bit || []; S.bit.push({ id: S.seq++, creado: new Date().toISOString(), quien: yo ? yo.nombre : 'Sistema', rol: yo ? yo.rol : null, tipo, detalle }); };
   const nombreDe = cl => (D.operadores.find(o => o.clave === cl) || {}).nombre;
-  return {
+  return api = {
     demo: true,
     haySesion: () => !!yo,
     async entrar(u, p) {
@@ -250,10 +283,20 @@ const mkDemo = () => {
     },
     salir() { yo = null; LS.del('esto_demo_yo'); },
     async yo() { return yo; },
-    async corridas(f, clave) { return cor.filter(c => c.fecha === f && mio(c.clave) && (!clave || c.clave === clave)).map(c => ({ ...c, km_real: S.km[c.id] ?? c.km_real }))
+    async corridas(f, clave) { return cor.filter(c => c.fecha === f && mio(c.clave) && (!clave || c.clave === clave)).map(c => ({ ...c, km_real: nz(S.km[c.id], c.km_real) }))
       .sort((a, b) => (a.hora || '99') < (b.hora || '99') ? -1 : 1); },
     async operadores() { return D.operadores.map(o => ({ ...o, ruta_asignada: o.ruta, unidad_base: o.unidad })); },
-    async unidades() { return D.unidades.map(u => ({ ...u, capacidad_tanque_l: S.cap[u.numero] ?? null, capacidad_confirmada: S.cap[u.numero] != null })); },
+    async unidades() { const R = window.DEMO_REND || {}; return D.unidades.map(u => { const r = R[u.numero] || [];
+      return { ...u, capacidad_tanque_l: nz(S.cap[u.numero], null), capacidad_confirmada: S.cap[u.numero] != null, ruta_rend: r[0] || null, meta_km_l: r[1] || null, minimo_km_l: r[2] || null, km_dia_ref: r[3] || null }; }); },
+    async estadoTanque(pu) { const u = mando() ? (pu || await api.miUnidad()) : await api.miUnidad(); if (!u) return [];
+      const uo = (await api.unidades()).find(x => x.numero === u) || {}, rmin = uo.minimo_km_l || (uo.meta_km_l || 3.8) * 0.93, ahora = new Date();
+      const cargas = [...S.tickets.filter(t => t.unidad === u).map(t => ({ t: new Date(t.creado), l: +t.litros, f: 'ticket' })), ...S.tags.filter(t => t.unidad === u).map(t => ({ t: parseD(t.fecha), l: +t.litros, f: 'gasolinera BUAP' }))].sort((a, b) => b.t - a.t);
+      const c = cargas[0], hd = x => { const d = parseD(x.fecha); const [h, m] = (hm(x.hora) || '23:59').split(':'); d.setHours(+h, +m); return d; };
+      const cu = cor.filter(x => x.unidad === u), kd = c ? cu.filter(x => hd(x) >= c.t && hd(x) <= ahora).reduce((s, x) => s + (x.km_programado || 0), 0) : 0;
+      const hoyC = cu.filter(x => x.fecha === hoy()), kh = hoyC.reduce((s, x) => s + (x.km_programado || 0), 0), kf = hoyC.filter(x => hd(x) > ahora).reduce((s, x) => s + (x.km_programado || 0), 0);
+      const cap = nz(S.cap[u], null), r1 = v => Math.round(v * 10) / 10;
+      return [{ unidad: u, capacidad: cap, ruta: uo.ruta_rend, meta: uo.meta_km_l, minimo: rmin, ultima_carga: c ? c.t.toISOString() : null, litros_carga: c ? c.l : null, fuente: c ? c.f : null,
+        km_desde: r1(kd), litros_usados: r1(kd / rmin), litros_est: !c ? null : Math.max(0, Math.round((cap != null ? cap : c.l) - kd / rmin)), km_hoy: r1(kh), litros_hoy: r1(kh / rmin), km_faltan_hoy: r1(kf), litros_faltan_hoy: r1(kf / rmin) }]; },
     async lavadoConfig() { return S.cfg; },
     async lavados(a, b) { return S.lavados.filter(l => l.estado !== 'cancelado' && l.fecha >= a && l.fecha <= b).sort((x, y) => (x.fecha + x.hora) < (y.fecha + y.hora) ? -1 : 1); },
     async agendar(fecha, hora, unidad) {
@@ -278,8 +321,8 @@ const mkDemo = () => {
     async marcar(id, estado, nota) { if (!['admin', 'supervisor', 'lavador'].includes(yo.rol)) falla('Sin permiso'); const l = S.lavados.find(x => x.id === id); l.estado = estado; if (nota) l.nota = nota; save(); },
     async tickets(a, b) { return S.tickets.filter(t => mio(t.clave) && t.fecha >= a && t.fecha <= b).sort((x, y) => y.id - x.id); },
     async lecturas(a, b) { return S.lecturas.filter(t => mio(t.clave) && t.fecha >= a && t.fecha <= b).sort((x, y) => y.id - x.id); },
-    async addTicket(r) { if (!r.clave) r.clave = yo.clave; if (!mio(r.clave)) falla('Sin permiso'); S.tickets.push({ id: S.seq++, fecha: hoy(), creado: Date.now(), ...r }); save(); },
-    async addLectura(r) { if (!r.clave) r.clave = yo.clave; if (!mio(r.clave)) falla('Sin permiso'); S.lecturas.push({ id: S.seq++, fecha: hoy(), creado: Date.now(), ...r }); save(); },
+    async addTicket(r) { await chkU(r.unidad); if (!r.clave) r.clave = yo.clave; if (!mio(r.clave)) falla('Sin permiso'); S.tickets.push({ id: S.seq++, fecha: hoy(), creado: Date.now(), ...r }); save(); },
+    async addLectura(r) { await chkU(r.unidad); if (!r.clave) r.clave = yo.clave; if (!mio(r.clave)) falla('Sin permiso'); S.lecturas.push({ id: S.seq++, fecha: hoy(), creado: Date.now(), ...r }); save(); },
     async delTicket(id) { S.tickets = S.tickets.filter(t => t.id !== id); save(); },
     async delLectura(id) { S.lecturas = S.lecturas.filter(t => t.id !== id); save(); },
     async rendimiento(a, b) {
@@ -289,7 +332,7 @@ const mkDemo = () => {
           .forEach(x => { const k = odo[x.unidad] = odo[x.unidad] || [1e12, 0]; k[0] = Math.min(k[0], x.odometro); k[1] = Math.max(k[1], x.odometro); });
         const kmO = Object.values(odo).reduce((s, k) => s + k[1] - k[0], 0);
         const cs = cor.filter(c => c.clave === o.clave && c.fecha >= a && c.fecha <= b);
-        const kp = cs.reduce((s, c) => s + (c.km_programado || 0), 0), kr = cs.reduce((s, c) => s + (S.km[c.id] ?? c.km_real ?? 0), 0);
+        const kp = cs.reduce((s, c) => s + (c.km_programado || 0), 0), kr = cs.reduce((s, c) => s + nz(S.km[c.id], nz(c.km_real, 0)), 0);
         const lt = S.tickets.filter(t => t.clave === o.clave && t.fecha >= a && t.fecha <= b).reduce((s, t) => s + +t.litros, 0);
         const lg = S.tags.filter(t => cs.some(c => c.unidad === t.unidad && c.fecha === t.fecha)).reduce((s, t) => s + +t.litros, 0);
         if (!kp && !lt && !kmO) continue;
@@ -297,7 +340,7 @@ const mkDemo = () => {
         out.push({ clave: o.clave, nombre: o.nombre, km_odometro: kmO || null, km_real: kr || null, km_programado: kp || null, litros_ticket: lt || null, litros_tag: lg || null,
           km_l: l ? Math.round(km / l * 100) / 100 : null, unidades: [...new Set(cs.map(c => c.unidad))].join(', ') });
       }
-      return out.sort((x, y) => (x.km_l ?? 1e9) - (y.km_l ?? 1e9));
+      return out.sort((x, y) => nz(x.km_l, 1e9) - nz(y.km_l, 1e9));
     },
     async tags(a, b) { return S.tags.filter(t => t.fecha >= a && t.fecha <= b); },
     async guia() { return S.guia; }, async criterios() { return S.criterios; }, async ajustes() { return S.ajustes; },
@@ -308,9 +351,9 @@ const mkDemo = () => {
     async reportes() { return S.reportes.filter(r => mando() || yo.rol === 'lavador' || r.autor === yo.nombre).slice().reverse(); },
     async addReporte(r) { S.reportes.push({ id: S.seq++, creado: new Date().toISOString(), atendido: false, ...r }); save(); },
     async atender(id) { S.reportes.find(r => r.id === id).atendido = true; save(); },
-    async cargarHorario(f, filas) { filas.forEach(x => { const c = cor.find(c => c.unidad === x.unidad && hm(c.hora) === x.hora && c.ruta === x.ruta); if (c && x.km_real) S.km[c.id] = x.km_real; }); save(); return filas.length; },
-    async cargarTags(filas) { S.tags = S.tags.concat(filas); save(); return filas.length; },
-    async setCapacidad(n, l) { S.cap[n] = l; save(); }, async setLavadoConfig(c) { Object.assign(S.cfg, c); save(); },
+    async cargarHorario(f, filas, n) { bit('Archivo subido', 'Horario: ' + (n || 'archivo') + ' · ' + filas.length + ' filas · rol del ' + f); filas.forEach(x => { const c = cor.find(c => c.unidad === x.unidad && hm(c.hora) === x.hora && c.ruta === x.ruta); if (c && x.km_real) S.km[c.id] = x.km_real; }); save(); return filas.length; },
+    async cargarTags(filas, n) { S.tags = S.tags.concat(filas); bit('Archivo subido', 'Tags: ' + (n || 'archivo') + ' · ' + filas.length + ' filas'); save(); return filas.length; },
+    async setCapacidad(n, l) { bit('Capacidad de tanque', 'Unidad ' + n + ': ' + (S.cap[n] || 'sin dato') + ' → ' + l + ' L'); S.cap[n] = l; save(); }, async setLavadoConfig(c) { Object.assign(S.cfg, c); bit('Configuración de lavado', S.cfg.hora_inicio + '–' + S.cfg.hora_fin + ' · ' + S.cfg.minutos + ' min · cupo ' + S.cfg.cupo); save(); },
     async usuarios() { S.inact = S.inact || {}; return [...Object.values(usuarios).map(u => ({ ...u, id: u.usuario })), ...D.operadores.map(o => ({ id: String(o.clave), usuario: o.busup || String(o.clave), clave: o.clave, nombre: o.nombre, rol: 'operador' }))].map(u => ({ ...u, activo: !S.inact[u.id] })); },
     async crearUsuario(u, n, r) { if (yo.rol !== 'admin') falla('Sin permiso'); if (usuarios[u]) falla('Ese usuario ya existe'); S.usuariosExtra = S.usuariosExtra || {}; S.usuariosExtra[u] = usuarios[u] = { usuario: u, nombre: n, rol: r, clave: null }; save(); },
     async resetPass() {}, async setActivo(id, v) { S.inact = S.inact || {}; S.inact[id] = !v; save(); },
@@ -320,11 +363,21 @@ const mkDemo = () => {
         o.km_programado += c.km_programado || 0; o.u.add(c.unidad);
         const g = S.gps[c.fecha + '|' + c.unidad]; if (g != null) { const tot = cor.filter(x => x.fecha === c.fecha && x.unidad === c.unidad).reduce((s, x) => s + (x.km_programado || 0), 0); o.km_gps = (o.km_gps || 0) + g * (c.km_programado || 0) / (tot || 1); } });
       return Object.values(out).map(o => ({ ...o, km_gps: o.km_gps == null ? null : Math.round(o.km_gps * 10) / 10, unidades: [...o.u].join(', ') })); },
-    async cargarGps(filas) { S.gps = S.gps || {}; filas.forEach(f => S.gps[f.fecha + '|' + f.unidad] = f.km); save(); return filas.length; },
+    async cargarGps(filas, n) { S.gps = S.gps || {}; filas.forEach(f => S.gps[f.fecha + '|' + f.unidad] = f.km); bit('Archivo subido', 'Km_Gps: ' + (n || 'archivo') + ' · ' + filas.length + ' filas'); save(); return filas.length; },
     async guardarPush() {}, async borrarPush() {},
+    async miUnidad() { S.cambios = S.cambios || []; const c = S.cambios.filter(x => x.clave === yo.clave && x.fecha === hoy()).pop(); if (c) return c.unidad_nueva;
+      const k = cor.find(x => x.clave === yo.clave && x.unidad); if (k) return k.unidad; const o = D.operadores.find(o => o.clave === yo.clave); return o && /^\d+$/.test(o.unidad || '') ? +o.unidad : null; },
+    async cambiarUnidad(u, m) { if (yo.rol !== 'operador') falla('Solo los operadores cambian su unidad aquí'); if (!D.unidades.some(x => x.numero === u)) falla('La unidad ' + u + ' no existe');
+      const ant = await this.miUnidad(); if (ant === u) falla('Ya tienes la unidad ' + u); S.cambios = S.cambios || [];
+      S.cambios.push({ id: S.seq++, fecha: hoy(), clave: yo.clave, nombre: yo.nombre, unidad_anterior: ant, unidad_nueva: u, motivo: m, visto: false, creado: new Date().toISOString() });
+      bit('Cambio de unidad', yo.nombre + ' (' + yo.clave + '): ' + (ant || 'sin unidad') + ' → ' + u + ' · ' + m); save(); return u; },
+    async cambiosUnidad(a, b) { return (S.cambios || []).filter(c => c.fecha >= a && c.fecha <= b && (mando() || c.clave === yo.clave)).slice().reverse(); },
+    async bitacora(a, b) { if (!mando()) return []; return (S.bit || []).filter(x => iso(new Date(x.creado)) >= a && iso(new Date(x.creado)) <= b).slice().reverse(); },
+    async registrar(t, d) { if (!mando()) falla('Sin permiso'); bit(t, d); save(); },
+    async marcarVistos() { (S.cambios || []).forEach(c => c.visto = true); save(); },
     async fallas(desde) { S.fallas = S.fallas || []; const mis = cor.filter(c => c.clave === yo.clave).map(c => c.unidad);
       return S.fallas.filter(f => f.creado >= desde && (['admin', 'jefe', 'supervisor', 'taller'].includes(yo.rol) || f.clave === yo.clave || mis.includes(f.unidad))).slice().reverse(); },
-    async reportarFalla(u, c, d, g, v, h) { S.fallas = S.fallas || []; const ahora = new Date().toISOString();
+    async reportarFalla(u, c, d, g, v, h) { await chkU(u); S.fallas = S.fallas || []; const ahora = new Date().toISOString();
       S.fallas.push({ id: S.seq++, unidad: u, clave: yo.clave, nombre: yo.nombre, categoria: c, descripcion: d, gravedad: g, veces: v, desde: h, confirmaciones: 0, ultimo_reporte: ahora, estado: 'pendiente', creado: ahora }); save(); },
     async confirmarFalla(id) { const f = S.fallas.find(f => f.id === id); f.confirmaciones++; f.ultimo_reporte = new Date().toISOString(); save(); },
     async atenderFalla(id, e, n) { if (!['admin', 'jefe', 'supervisor', 'taller'].includes(yo.rol)) falla('Sin permiso'); const f = S.fallas.find(f => f.id === id);
@@ -337,7 +390,30 @@ const mkDemo = () => {
   };
 };
 
-let API = Remoto;
+/* Memoria corta de lecturas: la app responde al instante al cambiar de pantalla y gasta menos datos.
+   Cualquier cambio (guardar, borrar, subir) limpia la memoria para no mostrar datos viejos. */
+function conCache(api) {
+  const LEER = new Set(['corridas', 'operadores', 'unidades', 'lavadoConfig', 'lavados', 'tickets', 'lecturas', 'rendimiento', 'tags', 'guia', 'criterios', 'ajustes', 'reportes', 'misKm', 'fallas', 'miUnidad', 'cambiosUnidad', 'bitacora', 'usuarios', 'estadoTanque', 'yo']);
+  const LARGO = { unidades: 6 * 36e5, guia: 36e5, criterios: 36e5, lavadoConfig: 6e5, ajustes: 6e5, operadores: 36e5 };
+  const mem = new Map(), out = { demo: api.demo };
+  const limpia = () => { mem.clear(); Object.keys(LARGO).forEach(k => LS.del('esto_c_' + k)); };
+  for (const k of Object.keys(api)) {
+    const f = api[k]; if (typeof f !== 'function') continue;
+    if (k === 'haySesion') { out[k] = (...a) => f.apply(api, a); continue; }
+    if (k === 'entrar' || k === 'salir') { out[k] = (...a) => { limpia(); return f.apply(api, a); }; continue; }
+    if (!LEER.has(k)) { out[k] = async (...a) => { const r = await f.apply(api, a); limpia(); return r; }; continue; }
+    out[k] = (...a) => {
+      const key = k + JSON.stringify(a), ttl = LARGO[k] || 45e3, hit = mem.get(key);
+      if (hit && Date.now() - hit.t < ttl) return hit.p;
+      if (LARGO[k] && !a.length) { const g = LS.get('esto_c_' + k, null); if (g && Date.now() - g.t < ttl) { const p = Promise.resolve(g.v); mem.set(key, { t: g.t, p }); return p; } }
+      const p = f.apply(api, a); mem.set(key, { t: Date.now(), p });
+      p.then(v => { if (LARGO[k] && !a.length) LS.set('esto_c_' + k, { t: Date.now(), v }); }, () => mem.delete(key));
+      return p;
+    };
+  }
+  return out;
+}
+let API = conCache(Remoto);
 
 /* =====================================================================
    ESTADO Y NAVEGACIÓN
@@ -361,25 +437,27 @@ const ESTADO = { ok: ['BIEN', 'En la meta'], warn: ['CASI', 'Muy cerca de la met
 const estadoChip = s => s ? '<span class="estado chip ' + s + '">' + ESTADO[s][0] + '</span>' : '<span class="estado chip">SIN DATOS</span>';
 
 function marco(tab, html) {
+  window.__ok = true;
   $('#app').innerHTML = '<header><img src="logo.png" alt="ER"><b>Operadores</b><small>' + esc(corto(E.yo.nombre)) + '<br>' +
     esc(ROLES[E.yo.rol]) + (API.demo ? ' · demo' : '') + '</small></header>' +
     '<main id="m">' + html + '</main><nav>' + TABS().map(([k, t]) => '<a href="#' + k + '" class="' + (k === tab ? 'on' : '') + '"><svg viewBox="0 0 24 24">' + ICO[k] + '</svg>' + t + '</a>').join('') + '</nav>';
 }
-const cargando = tab => marco(tab, '<div class="vacio">Cargando…</div>');
+const cargando = tab => { marco(tab, ''); const m = $('#m'); setTimeout(() => { if (m.isConnected && !m.innerHTML) m.innerHTML = '<div class="vacio">Cargando…</div>'; }, 250); };
 async function ir() {
   if (!API.haySesion()) return vLogin();
   if (!E.yo) { try { E.yo = await API.yo(); E.aj = await API.ajustes(); } catch (e) { API.salir(); return vLogin(e.message); } if (!E.yo) { API.salir(); return vLogin('Tu usuario no tiene perfil'); } }
   const [tab, sub] = (location.hash.slice(1) || ({ lavador: 'lavado', taller: 'taller' }[E.yo.rol] || 'inicio')).split('/');
-  const V = { inicio: vInicio, diesel: vDiesel, lavado: vLavado, vueltas: vVueltas, mas: vMas, guia: vGuia, bono: vBono, panel: vPanel, rend: vRendTodos, reportes: vReportes, subir: vSubir, tanques: vTanques, config: vConfig, exportar: vExportar, editar: vEditar, usuarios: vUsuarios, taller: vTaller };
+  const V = { inicio: vInicio, diesel: vDiesel, lavado: vLavado, vueltas: vVueltas, mas: vMas, guia: vGuia, bono: vBono, panel: vPanel, rend: vRendTodos, reportes: vReportes, subir: vSubir, tanques: vTanques, config: vConfig, exportar: vExportar, bitacora: vBitacora, editar: vEditar, usuarios: vUsuarios, taller: vTaller };
   cargando(V[tab] && ['inicio', 'diesel', 'lavado', 'taller', 'vueltas'].includes(tab) ? tab : 'mas');
   try { await (V[tab] || vInicio)(sub); } catch (e) { $('#m').innerHTML = '<div class="c"><b>No se pudo cargar</b><p class="err">' + esc(e.message) + '</p><button class="sec" onclick="ir()">Reintentar</button></div>'; }
 }
 addEventListener('hashchange', ir);
-async function unidades() { if (!E.unidades) E.unidades = await API.unidades(); return E.unidades; }
-async function miUnidadHoy() { if (!E.yo.clave) return null; const c = await API.corridas(hoy(), E.yo.clave); const u = c.find(x => x.unidad); return u ? u.unidad : null; }
+async function unidades() { return API.unidades(); }
+async function miUnidadHoy() { if (!E.yo.clave) return null; try { const u = await API.miUnidad(); return u == null ? null : +u; } catch (e) { return null; } }
 
 /* ---------- LOGIN ---------- */
 function vLogin(msg) {
+  window.__ok = true;
   $('#app').innerHTML = '<div class="login"><div style="text-align:center;padding:28px 0 18px"><img src="logo.png" alt="Estrella Roja" style="height:64px"></div>' +
     '<div class="hero"><span class="pill">Servicio STU · BUAP</span><h2>Hola, bienvenido</h2><p>Tu diésel, tu lavado y tus vueltas en un solo lugar.</p></div>' +
     '<form id="f" class="c"><label>Tu usuario</label><input name="u" autocomplete="username" autocapitalize="characters" placeholder="Tu usuario (Busup)" required>' +
@@ -398,19 +476,21 @@ function vLogin(msg) {
 const tile = (h, ico, t, d) => '<a class="tile" href="#' + h + '"><i><svg viewBox="0 0 24 24">' + ICO[ico] + '</svg></i><b>' + t + '</b><span>' + d + '</span></a>';
 async function vInicio() {
   const a = lunes(hoy()), b = addD(a, 6);
-  const [cor, rend, lav] = await Promise.all([E.yo.clave || esMando() ? API.corridas(hoy(), E.yo.clave) : [], API.rendimiento(a, b), API.lavados(a, addD(a, 13))]);
+  const op = esOperador();
+  const [cor, rend, lav, us, unH, tq] = await Promise.all([E.yo.clave || esMando() ? API.corridas(hoy(), E.yo.clave) : [], rendSemana(a), API.lavados(a, addD(a, 13)),
+    unidades(), op ? miUnidadHoy() : null, op ? API.estadoTanque(null).catch(() => []) : []]);
   const nombre = corto(E.yo.nombre).split(' ')[0];
   let h = '';
   if (!esMando()) {
-    const r = rend[0], sem = r && semaforo(r.km_l, meta(), tol());
+    const un = unH, uObj = us.find(u => u.numero == un), r = rend[0], uR = (r && unidadDe(us, r.unidades)) || uObj, sem = r && semU(r.km_l, uR), t = tq[0];
     const ahora = new Date().getHours() * 60 + new Date().getMinutes();
     const prox = cor.find(c => c.hora && min(c.hora) >= ahora);
-    const un = (cor.find(c => c.unidad) || {}).unidad;
     const miLav = lav.find(l => l.clave === E.yo.clave && lunes(l.fecha) === a);
     h += '<div class="hero"><span class="pill">' + (un ? 'Unidad ' + un : 'Sin unidad hoy') + '</span><h2>Hola, ' + esc(nombre) + '</h2>' +
-      '<p>' + (cor.length ? 'Hoy tienes <b>' + cor.length + '</b> vueltas.' + (prox ? '<br>La siguiente: <b>' + hm(prox.hora) + '</b> ' + esc(prox.ruta) : '') : 'Hoy no tienes vueltas cargadas.') + '</p></div>';
+      '<p>' + (cor.length ? 'Hoy tienes <b>' + cor.length + '</b> vueltas.' + (prox ? '<br>La siguiente: <b>' + hm(prox.hora) + '</b> ' + esc(prox.ruta) : '') : 'Hoy no tienes vueltas cargadas.') + '</p></div>' +
+      '<button class="sec" data-cu style="margin-bottom:12px">¿Te cambiaron de unidad? Toca aquí</button>';
     h += '<a href="#diesel" style="text-decoration:none;color:inherit"><div class="c"><div class="fila"><div class="f"><div class="mut">Mi diésel esta semana</div>' +
-      '<div class="big ' + (sem || '') + '">' + n2(r && r.km_l) + ' <span style="font-size:16px">km por litro</span></div><div class="mut">La meta es ' + n1(meta()) + '</div></div>' + estadoChip(sem) + '</div></div></a>';
+      '<div class="big ' + (sem || '') + '">' + n2(r && r.km_l) + ' <span style="font-size:16px">km por litro</span></div><div class="mut">Meta de tu ruta: ' + n2(metaU(uR)) + (t && t.litros_est != null ? ' · tanque ≈ ' + Math.round(t.litros_est) + ' L' : '') + '</div></div>' + estadoChip(sem) + '</div></div></a>' + consejoManejo(r, uR);
     h += '<a href="#lavado" style="text-decoration:none;color:inherit"><div class="c"><div class="fila"><div class="f"><div class="mut">Mi lavado esta semana</div>' +
       (miLav ? '<div style="font-size:21px;font-weight:800">' + fCorta(miLav.fecha) + ' · ' + hm(miLav.hora) + '</div><div class="mut">Unidad ' + miLav.unidad + '</div>'
              : '<div style="font-size:21px;font-weight:800">Sin apartar</div><div class="mut">Toca aquí para apartar tu hora</div>') + '</div>' +
@@ -419,15 +499,19 @@ async function vInicio() {
       tile('taller', 'taller', 'Taller', 'Reporta una falla') + tile('vueltas', 'vueltas', 'Vueltas', 'Tu rol de hoy') + '</div>' +
       '<a href="#guia" style="text-decoration:none"><button class="sec">Guía del servicio y bono</button></a>';
   } else {
-    const malos = rend.filter(x => semaforo(x.km_l, meta(), tol()) === 'mal').length;
+    const malos = rend.filter(x => semU(x.km_l, unidadDe(us, x.unidades)) === 'mal').length;
     const hoyL = lav.filter(l => l.fecha === hoy());
+    const camb = await API.cambiosUnidad(hoy(), hoy()).catch(() => []), nuevos = camb.filter(c => !c.visto).length;
     h += '<div class="hero"><span class="pill">' + esc(ROLES[E.yo.rol]) + '</span><h2>Hola, ' + esc(nombre) + '</h2><p>' + fCorta(hoy()) + ' · ' + cor.length + ' corridas cargadas hoy</p></div>' +
       '<div class="g2"><a href="#rend" style="text-decoration:none;color:inherit"><div class="c"><div class="mut">Abajo de la meta</div><div class="big mal">' + malos + '</div><div class="mut">de ' + rend.length + ' operadores</div></div></a>' +
       '<a href="#lavado" style="text-decoration:none;color:inherit"><div class="c"><div class="mut">Lavados hoy</div><div class="big">' + hoyL.length + '</div><div class="mut">' + hoyL.filter(l => l.estado === 'lavado').length + ' terminados</div></div></a></div>' +
       '<div class="tiles">' + tile('rend', 'diesel', 'Rendimiento', 'Todos los operadores') + tile('lavado', 'lavado', 'Lavado', 'Rol de la semana') +
-      tile('taller', 'taller', 'Taller', 'Lista para la guardia') + tile('vueltas', 'vueltas', 'Rol del día', 'Buscar operador') + '</div>';
+      tile('taller', 'taller', 'Taller', 'Lista para la guardia') + tile('vueltas', 'vueltas', 'Rol del día', 'Buscar operador') + '</div>' +
+      '<a href="#bitacora" style="text-decoration:none;color:inherit"><div class="c fila"' + (nuevos ? ' style="border:2px solid var(--mal)"' : '') + '><div class="f"><div class="mut">Cambios de unidad hoy</div><div class="big' + (nuevos ? ' mal' : '') + '">' + camb.length + '</div>' +
+      '<div class="mut">' + (nuevos ? nuevos + ' sin revisar · toca para verlos' : 'Toca para ver cambios y bitácora') + '</div></div><span class="mut">›</span></div></a>';
   }
   $('#m').innerHTML = h;
+  activarCambioUnidad();
 }
 
 /* ---------- DIÉSEL ---------- */
@@ -450,44 +534,146 @@ function montarGauge(onCambio, ini) {
   svg.onpointerup = svg.onpointercancel = () => { svg.onpointermove = null; };
   pinta(); return { get: () => f, pinta };
 }
+/* ---------- SEMANA "LLENO A LLENO" ----------
+   Todos llenan el tanque el lunes. El diésel que gastaste de lunes a domingo es lo que cargas
+   de martes al lunes siguiente (incluido el lleno de ese lunes). Los km son de lunes a domingo. */
+async function rendSemana(a) {
+  const [k, l, c] = await Promise.all([API.rendimiento(a, addD(a, 6)), API.rendimiento(addD(a, 1), addD(a, 7)), API.rendimiento(addD(a, 7), addD(a, 7))]);
+  const L = {}, C = {}; l.forEach(x => L[x.clave] = x); c.forEach(x => C[x.clave] = x);
+  return k.map(x => { const y = L[x.clave] || {}, z = C[x.clave] || {};
+    const km = +(x.km_odometro || x.km_gps || x.km_real || x.km_programado) || 0, lt = +(y.litros_tag || y.litros_ticket) || 0;
+    return Object.assign({}, x, { litros_ticket: y.litros_ticket || null, litros_tag: y.litros_tag || null, km_l: km && lt ? Math.round(km / lt * 100) / 100 : null,
+      cerrada: !!(+(z.litros_tag || z.litros_ticket) > 0), lleno_lunes: +(z.litros_tag || z.litros_ticket) || null }); });
+}
+
+/* ---------- BONO DE DIÉSEL: se mide por semana en litros ---------- */
+function bonoDiesel(r, u) {
+  if (!r) return null;
+  const km = +(r.km_odometro || r.km_gps || r.km_real || r.km_programado) || 0, litros = +(r.litros_tag || r.litros_ticket) || 0;
+  if (!km) return null;
+  const permitido = km / minU(u), meta = km / metaU(u);
+  return { km, litros, permitido, meta, dif: permitido - litros, cumple: litros <= permitido, cerrada: !!r.cerrada, lleno: r.lleno_lunes };
+}
+function tarjetaBonoDiesel(r, u, semana) {
+  const b = bonoDiesel(r, u);
+  const pie = '<p class="mut" style="margin-top:8px">' + semana + '. Se mide de <b>lleno a lleno</b>: lo que le entra al tanque el lunes siguiente es lo que gastaste en la semana.</p>';
+  if (!b) return '<div class="c"><b>Tu bono de diésel</b><p class="mut" style="margin-top:4px">Todavía no hay vueltas de esta semana para calcularlo.</p>' + pie + '</div>';
+  const cuenta = '<p class="mut">Cuenta: ' + n1(b.km) + ' km ÷ ' + n2(minU(u)) + ' km/l (mínimo de tu ruta) = ' + Math.round(b.permitido) + ' L.</p>';
+  if (!b.cerrada) {
+    const resta = b.permitido - b.litros, resM = b.meta - b.litros;
+    return '<div class="c" style="border:2px solid var(--pri)"><b style="font-size:18px">Tu bono de diésel esta semana</b>' +
+      '<div class="g2" style="margin-top:10px"><div><div class="mut">Te tocan (hasta hoy)</div><b style="font-size:22px">' + Math.round(b.permitido) + ' L</b></div><div><div class="mut">Cargaste entre semana</div><b style="font-size:22px">' + Math.round(b.litros) + ' L</b></div></div>' +
+      '<div style="background:#f3f6fb;border-radius:14px;padding:12px;margin-top:10px;text-align:center"><div class="mut">El lunes, al llenar, que le entren máximo</div><div class="big ' + (resta > 0 ? '' : 'mal') + '">' + Math.max(0, Math.round(resta)) + ' L</div>' +
+      '<div class="mut">Para llegar a la meta: ' + Math.max(0, Math.round(resM)) + ' L o menos</div></div>' +
+      (resta > 0 ? '' : '<p class="mal" style="margin-top:8px"><b>Ya cargaste más de lo que te toca.</b> Maneja suave el resto de la semana.</p>') +
+      '<p class="mut" style="margin-top:8px">Este número sube con cada vuelta que das.</p>' + cuenta + pie + '</div>';
+  }
+  const pct = Math.min(100, Math.round(b.litros / b.permitido * 100));
+  return '<div class="c" style="border:2px solid ' + (b.cumple ? 'var(--ok)' : 'var(--mal)') + '"><div class="fila"><div class="f"><b style="font-size:18px">Tu bono de diésel · semana cerrada</b></div>' +
+    '<span class="estado chip ' + (b.cumple ? 'ok' : 'mal') + '">' + (b.cumple ? 'CUMPLISTE' : 'TE PASASTE') + '</span></div>' +
+    '<div class="g2" style="margin-top:10px"><div><div class="mut">Te tocaban</div><b style="font-size:22px">' + Math.round(b.permitido) + ' L</b></div><div><div class="mut">Gastaste</div><b style="font-size:22px" class="' + (b.cumple ? '' : 'mal') + '">' + Math.round(b.litros) + ' L</b></div></div>' +
+    '<div class="bar" style="margin-top:10px"><i style="width:' + pct + '%;background:' + (b.cumple ? 'var(--ok)' : 'var(--mal)') + '"></i></div>' +
+    '<p style="margin-top:8px">' + (b.cumple ? 'Te sobraron <b>' + Math.round(b.dif) + ' L</b>. Cumples el 15% del bono.' : 'Te pasaste <b>' + Math.round(-b.dif) + ' L</b>: <b>no te llega el 15% de rendimiento</b>.') + '</p>' + cuenta + pie + '</div>';
+}
+function tarjetaHoy(t, u) {
+  if (!t || !(+t.km_hoy > 0)) return '';
+  const km = +t.km_hoy, mx = km / minU(u), mt = km / metaU(u);
+  return '<div class="c"><b style="font-size:18px">Tu diésel de hoy</b><p class="mut" style="margin:4px 0 8px">Hoy recorres <b>' + n1(km) + ' km</b> (tu ruta × tus vueltas).</p>' +
+    '<div class="g2"><div><div class="mut">Para tu bono, máximo</div><b style="font-size:22px">' + n1(mx) + ' L</b></div><div><div class="mut">Para la meta</div><b style="font-size:22px" class="ok">' + n1(mt) + ' L</b></div></div>' +
+    '<p style="margin-top:8px">Si gastas <b>1 litro menos</b> cada día, a la semana son unos 5 L menos y subes a <b>' + n2(km / Math.max(1, mt - 1)) + ' km/l</b>.</p>' +
+    '<p class="mut">El número de un solo día es aproximado (la aguja del tablero se mueve por marcas). El que cuenta para el bono es el de la semana, de lleno a lleno.</p></div>';
+}
+
+/* ---------- METAS POR RUTA ---------- */
+const metaU = u => u && u.meta_km_l ? +u.meta_km_l : meta();
+const minU = u => u && u.minimo_km_l ? +u.minimo_km_l : metaU(u) * (1 - tol() / 100);
+const semU = (v, u) => v == null || isNaN(v) ? '' : v >= metaU(u) ? 'ok' : v >= minU(u) ? 'warn' : 'mal';
+const unidadDe = (us, txt) => { const ns = String(txt || '').split(',').map(x => x.trim()); return us.find(u => ns.includes(String(u.numero))); };
+const CONSEJOS = ['Acelera suave y parejo; evita arrancones.', 'Anticipa los altos y frena con tiempo: cada frenón tira diésel.', 'No dejes la unidad encendida sin necesidad.',
+  'Respeta la velocidad: correr gasta más y baja tu bono.', 'Revisa que las llantas tengan buen aire.', 'Si notas que el motor jala menos, repórtalo en Taller.'];
+function consejoManejo(r, u) {
+  const s = r && semU(r.km_l, u); if (s !== 'mal' && s !== 'warn') return '';
+  const d = new Date().getDate(), tips = [CONSEJOS[d % 6], CONSEJOS[(d + 2) % 6], CONSEJOS[(d + 4) % 6]];
+  return '<div class="c" style="border:2px solid ' + (s === 'mal' ? 'var(--mal)' : 'var(--warn)') + ';background:' + (s === 'mal' ? '#fff5f5' : '#fffaf0') + '">' +
+    '<b style="font-size:18px">' + (s === 'mal' ? 'Tu rendimiento está más bajo de lo normal' : 'Vas cerca de tu meta, ¡tú puedes!') + '</b>' +
+    '<p class="mut" style="margin:4px 0 6px">' + (s === 'mal' ? 'Tu ruta pide al menos ' + n2(minU(u)) + ' km por litro. Maneja así esta semana:' : 'Unos detalles y llegas a ' + n2(metaU(u)) + ':') + '</p>' +
+    '<ul class="rombos">' + tips.map(t => '<li>' + t + '</li>').join('') + '</ul></div>';
+}
+function gaugeFijo(f) {
+  const v = f == null ? 0 : Math.max(0, Math.min(1, f)), a = Math.PI * (1 - v), x = 150 + 128 * Math.cos(a), y = 160 - 128 * Math.sin(a);
+  const col = f == null ? 'var(--linea)' : v <= .25 ? 'var(--mal)' : v <= .4 ? 'var(--warn)' : 'var(--pri)';
+  const marcas = [0, .25, .5, .75, 1].map(g => { const b = Math.PI * (1 - g); return '<text x="' + (150 + 96 * Math.cos(b) + (g === .5 ? 18 : 0)).toFixed(1) + '" y="' + (165 - 96 * Math.sin(b) + (g === .5 ? 8 : 0)).toFixed(1) + '" text-anchor="middle" font-size="14" font-weight="700" fill="currentColor">' + ['E', '¼', '½', '¾', 'F'][g * 4] + '</text>'; }).join('');
+  return '<svg class="gauge" viewBox="0 0 300 185" style="pointer-events:none"><path d="M22 160 A128 128 0 0 1 278 160" fill="none" stroke="var(--linea)" stroke-width="16" stroke-linecap="round"/>' +
+    (f != null && v > .005 ? '<path d="M22 160 A128 128 0 0 1 ' + x.toFixed(1) + ' ' + y.toFixed(1) + '" fill="none" stroke="' + col + '" stroke-width="16" stroke-linecap="round"/>' : '') +
+    '<g style="color:var(--gris)">' + marcas + '</g>' + (f == null ? '' : '<g transform="rotate(' + (v * 180 - 90) + ' 150 160)"><line x1="150" y1="160" x2="150" y2="52" stroke="var(--tinta)" stroke-width="5" stroke-linecap="round"/></g>') +
+    '<circle cx="150" cy="160" r="11" fill="var(--acento)"/><circle cx="150" cy="160" r="4" fill="var(--carta)"/></svg>';
+}
+function tarjetaTanque(t, u) {
+  if (!t) return '<div class="c"><p class="mut">Sin unidad asignada hoy.</p></div>';
+  const cap = t.capacidad != null ? +t.capacidad : null, est = t.litros_est != null ? +t.litros_est : null;
+  const falta = +t.litros_faltan_hoy || 0, alcanza = est != null ? est >= falta * 1.25 + 20 : null;
+  const fh = x => { const d = new Date(String(x).replace(' ', 'T')); return isNaN(d) ? '' : fCorta(iso(d)) + (d.getHours() || d.getMinutes() ? ' · ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) : ''); };
+  return '<div class="c dest">' + gaugeFijo(cap && est != null ? est / cap : null) +
+    '<div style="text-align:center;margin-top:-4px"><div class="big num">' + (est != null ? '≈ ' + Math.round(est) + ' L' : '—') + '</div>' +
+    '<div class="mut">' + (est == null ? 'Aún no hay cargas registradas de la unidad ' + t.unidad + '. Guarda tu ticket cuando cargues.' : cap ? 'de ' + Math.round(cap) + ' L · ' + Math.round(est / cap * 100) + '% del tanque' : 'Lo mínimo que te queda (falta dar de alta el tamaño del tanque)') + '</div>' +
+    (alcanza == null ? '' : '<div class="estado chip ' + (alcanza ? 'ok' : 'mal') + '" style="margin-top:8px">' + (alcanza ? 'TE ALCANZA PARA HOY' : 'CARGA DIÉSEL HOY') + '</div>') + '</div>' +
+    '<div class="lista" style="margin-top:10px">' +
+    (t.ultima_carga ? '<div><div class="f"><div class="mut">Última carga</div><b>' + n1(t.litros_carga) + ' L</b> <span class="mut">· ' + fh(t.ultima_carga) + ' · ' + esc(t.fuente) + '</span></div></div>' +
+      '<div><div class="f"><div class="mut">Desde entonces</div><b>' + n1(t.km_desde) + ' km</b> <span class="mut">≈ ' + n1(t.litros_usados) + ' L gastados</span></div></div>' : '') +
+    '<div><div class="f"><div class="mut">Lo que te falta hoy</div><b>' + n1(t.km_faltan_hoy) + ' km</b> <span class="mut">≈ ' + n1(t.litros_faltan_hoy) + ' L</span></div></div></div>' +
+    '<p class="mut" style="margin-top:8px">Se calcula solo con tus cargas y tus vueltas, usando el mínimo de tu ruta (' + n2(t.minimo) + ' km/l). Es aproximado: revisa también tu tablero.</p></div>';
+}
+function tarjetaRuta(t, u) {
+  if (!t) return '';
+  const m = metaU(u), mn = minU(u);
+  return '<div class="c"><div class="fila"><div class="f"><div class="mut">Ruta de la unidad ' + t.unidad + '</div><div style="font-size:22px;font-weight:800">' + esc(t.ruta || 'Sin ruta asignada') + '</div></div></div>' +
+    '<div class="g2" style="margin-top:10px"><div><div class="mut">Meta</div><b style="font-size:20px">' + n2(m) + '</b> <span class="mut">km/l</span></div><div><div class="mut">Mínimo (93%)</div><b style="font-size:20px">' + n2(mn) + '</b> <span class="mut">km/l</span></div>' +
+    '<div><div class="mut">Hoy recorres</div><b style="font-size:20px">' + n1(t.km_hoy) + '</b> <span class="mut">km</span></div><div><div class="mut">Diésel para hoy</div><b style="font-size:20px">' + n1(+t.km_hoy / m) + '</b> <span class="mut">L</span></div></div></div>';
+}
 async function vDiesel(sub) {
   const per = sub === 'pasada' ? -7 : 0, a = addD(lunes(hoy()), per), b = addD(a, 6);
-  const [us, uHoy, tks, lec, rend] = await Promise.all([unidades(), miUnidadHoy(), API.tickets(a, b), API.lecturas(a, b), API.rendimiento(a, b)]);
-  let un = LS.get('esto_unidad', null); if (uHoy) un = uHoy; if (!un && us[0]) un = us[0].numero;
+  const [us, uHoy, tks, lec, rend] = await Promise.all([unidades(), miUnidadHoy(), API.tickets(a, b), API.lecturas(a, b), rendSemana(a)]);
+  let un = LS.get('esto_unidad', null); if (esOperador() && uHoy) un = uHoy; if (!un && us[0]) un = us[0].numero;
+  const t = (await API.estadoTanque(esMando() ? +un : null))[0];
+  const uObj = us.find(u => u.numero == (t ? t.unidad : un));
   const r = esMando() ? null : rend.find(x => x.clave === E.yo.clave);
-  const sem = r && semaforo(r.km_l, meta(), tol());
-  const lt = tks.reduce((s, t) => s + +t.litros, 0);
+  const uRend = (r && unidadDe(us, r.unidades)) || uObj, sem = r && semU(r.km_l, uRend);
+  const lt = tks.reduce((s, x) => s + +x.litros, 0);
   $('#m').innerHTML = '<h2>Mi diésel</h2>' +
     '<div class="c dest"><div class="fila"><div class="f"><div class="mut">' + (per ? 'Semana pasada' : 'Esta semana') + '</div><div class="big ' + (sem || '') + '">' + n2(r && r.km_l) + ' <span style="font-size:16px">km por litro</span></div>' +
-    '<div class="mut">' + (sem ? ESTADO[sem][1] + ' (' + n1(meta()) + ')' : 'La meta es ' + n1(meta()) + ' km por litro') + '</div></div>' + estadoChip(sem) + '</div>' +
+    '<div class="mut">' + (sem ? ESTADO[sem][1] + ' · meta ' + n2(metaU(uRend)) : 'Meta de tu ruta: ' + n2(metaU(uRend)) + ' km por litro') + '</div></div>' + estadoChip(sem) + '</div>' +
     (r ? '<div class="g2" style="margin-top:12px"><div><div class="mut">Kilómetros</div><b class="num" style="font-size:20px">' + n1(r.km_odometro || r.km_gps || r.km_real || r.km_programado) + '</b></div>' +
-      '<div><div class="mut">Litros</div><b class="num" style="font-size:20px">' + n1(r.litros_tag || r.litros_ticket) + '</b></div></div>' +
+      '<div><div class="mut">Litros (mar. a lun.)</div><b class="num" style="font-size:20px">' + n1(r.litros_tag || r.litros_ticket) + '</b></div></div>' +
       (r.litros_tag && r.litros_ticket ? '<p class="mut" style="margin-top:8px">Tus tickets: ' + n1(r.litros_ticket) + ' L · Gasolinera: ' + n1(r.litros_tag) + ' L</p>' : '')
-      : esMando() ? '<p class="mut" style="margin-top:6px">Ve a todos en <a href="#rend">Rendimiento de operadores</a>.</p>' : '<p class="mut" style="margin-top:6px">Guarda tu tanque y tus tickets para ver tu número.</p>') +
+      : esMando() ? '<p class="mut" style="margin-top:6px">Ve a todos en <a href="#rend">Rendimiento de operadores</a>.</p>' : '<p class="mut" style="margin-top:6px">Guarda tus tickets para ver tu número.</p>') +
     '<div class="seg" style="margin:14px 0 0"><button class="' + (per ? '' : 'on') + '" onclick="location.hash=\'diesel\'">Esta semana</button><button class="' + (per ? 'on' : '') + '" onclick="location.hash=\'diesel/pasada\'">Semana pasada</button></div></div>' +
-    '<div class="aviso-r"><b>Tu tranquilidad en ruta depende de ti</b><p>La flecha es solo una <b>guía</b> para ayudarte a calcular. Siempre revisa el tablero de tu unidad y carga diésel a tiempo.</p>' +
-    '<p>Si la unidad se queda sin diésel, el rescate, la gasolina del taller y el diésel de la unidad los pagas tú: <b>desde $5,000</b>. La empresa no se hace responsable.</p><p><b>Carga con tiempo y trabaja tranquilo.</b></p></div>' +
-    '<h3>¿Cuánto diésel tienes?</h3><div class="c"><div class="fila"><div class="f"><b>Unidad</b></div><select id="un" style="width:130px">' +
-    us.map(u => '<option value="' + u.numero + '"' + (u.numero == un ? ' selected' : '') + '>' + u.numero + '</option>').join('') + '</select></div>' +
-    '<div class="paso"><em>1</em>Mueve la flecha como la ves en tu tablero</div>' + gaugeSVG() +
-    '<div style="text-align:center;margin-top:-4px"><div class="big num" id="glt">—</div><div class="mut" id="gtx"></div><div id="gbajo" class="estado chip mal" style="margin-top:8px;display:none">TANQUE BAJO · CARGA HOY</div></div>' +
-    '<div class="paso"><em>2</em>¿Vas empezando o terminando?</div><div class="seg" id="mom"><button class="on" data-m="inicio">Empiezo</button><button data-m="fin">Termino</button></div>' +
-    '<div class="paso"><em>3</em>Escribe los kilómetros del tablero</div><input id="odo" type="number" inputmode="numeric" placeholder="Ej. 152340">' +
-    '<p class="err" id="ge"></p><button id="gsv">Guardar</button></div>' +
+    (esMando() ? '' : tarjetaBonoDiesel(r, uRend, (per ? 'Semana pasada' : 'Semana') + ' del ' + fCorta(a) + ' al ' + fCorta(b))) + consejoManejo(r, uRend) +
+    '<h3>¿Cuánto diésel traes?</h3>' + (esOperador() ? '<div class="c" style="padding:8px 12px">' + unidadFija(uHoy, 'un') + '</div>'
+      : '<div class="c fila"><div class="f"><b>Unidad</b></div><select id="un" style="width:130px">' + us.map(u => '<option value="' + u.numero + '"' + (u.numero == un ? ' selected' : '') + '>' + u.numero + '</option>').join('') + '</select></div>') +
+    tarjetaTanque(t, uObj) + tarjetaRuta(t, uObj) + (esMando() ? '' : tarjetaHoy(t, uObj)) +
+    '<div class="aviso-r"><b>Tu tranquilidad en ruta depende de ti</b><p>El cálculo del tanque es solo una <b>guía</b>. Siempre revisa el tablero de tu unidad y carga diésel a tiempo.</p>' +
+    '<p>Si la unidad se queda sin diésel, el rescate, la gasolina del taller y el diésel de la unidad corren por tu cuenta. La empresa no se hace responsable.</p><p><b>Carga con tiempo y trabaja tranquilo.</b></p></div>' +
     '<h3>¿Cargaste diésel? Guarda tu ticket</h3><div class="c"><label>Litros del ticket</label><input id="tl" type="number" inputmode="decimal" step="0.01" placeholder="Ej. 95">' +
     '<label>Kilómetros del tablero</label><input id="to" type="number" inputmode="numeric" placeholder="Ej. 152400">' +
     '<details style="margin-top:12px"><summary class="mut">Más datos (si los tienes)</summary><div class="g2"><div><label>Folio</label><input id="tf"></div><div><label>Importe $</label><input id="ti" type="number" inputmode="decimal" step="0.01"></div></div></details>' +
     '<p class="err" id="te"></p><button id="tsv">Guardar ticket</button></div>' +
+    '<details class="c"><summary style="font-weight:700;cursor:pointer">Lectura del tablero (solo si funciona en tu unidad)</summary>' +
+    '<div class="paso"><em>1</em>Mueve la flecha como la ves en tu tablero</div>' + gaugeSVG() +
+    '<div style="text-align:center;margin-top:-4px"><div class="big num" id="glt">—</div><div class="mut" id="gtx"></div></div>' +
+    '<div class="paso"><em>2</em>¿Vas empezando o terminando?</div><div class="seg" id="mom"><button class="on" data-m="inicio">Empiezo</button><button data-m="fin">Termino</button></div>' +
+    '<div class="paso"><em>3</em>Escribe los kilómetros del tablero</div><input id="odo" type="number" inputmode="numeric" placeholder="Ej. 152340">' +
+    '<p class="err" id="ge"></p><button id="gsv">Guardar lectura</button></details>' +
     '<h3>' + (esMando() ? 'Registros de todos' : 'Lo que guardaste') + ' · ' + fCorta(a) + ' a ' + fCorta(b) + '</h3><div class="c">' +
     '<div class="fila"><div class="f"><div class="mut">Tickets</div><b>' + tks.length + '</b></div><div class="f"><div class="mut">Litros</div><b class="num">' + n1(lt) + '</b></div><div class="f"><div class="mut">Tanque</div><b>' + lec.length + '</b></div></div>' +
     '<div class="lista" style="margin-top:8px">' + [...tks.map(t => ({ ...t, k: 't' })), ...lec.map(l => ({ ...l, k: 'l' }))].sort((x, y) => (y.fecha + y.id) > (x.fecha + x.id) ? 1 : -1).slice(0, 30).map(x =>
       '<div><div class="f"><b>' + (x.k === 't' ? 'Ticket ' + n1(x.litros) + ' L' : 'Tanque ' + Math.round(x.nivel * 100) + '% · ' + (x.momento === 'fin' ? 'terminé' : 'empecé')) + '</b><div class="mut">' + fCorta(x.fecha) + ' · Unidad ' + x.unidad + (x.odometro ? ' · ' + n1(x.odometro) + ' km' : '') + '</div></div>' +
       '<button class="sec mini" data-del="' + x.k + x.id + '">Borrar</button></div>').join('') + '</div>' + (tks.length + lec.length ? '' : '<p class="vacio">Todavía no guardas nada esta semana</p>') + '</div>';
   const cap = () => { const u = us.find(u => u.numero == $('#un').value); return u && u.capacidad_tanque_l; };
-  const gz = montarGauge(f => { const c = cap(); $('#gbajo').style.display = f <= .25 ? '' : 'none'; $('#glt').textContent = c ? 'Unos ' + Math.round(f * c) + ' litros' : Math.round(f * 100) + ' %';
+  const gz = montarGauge(f => { const c = cap(); $('#glt').textContent = c ? 'Unos ' + Math.round(f * c) + ' litros' : Math.round(f * 100) + ' %';
     $('#gtx').textContent = c ? 'Le caben ' + c + ' L · faltan unos ' + Math.round((1 - f) * c) + ' L para llenar' : 'Falta dar de alta el tamaño del tanque'; }, .5);
   const get = gz.get;
-  $('#un').onchange = () => { LS.set('esto_unidad', +$('#un').value); gz.pinta(); };
+  $('#un').onchange = () => { LS.set('esto_unidad', +$('#un').value); if (esMando()) ir(); else gz.pinta(); };
+  activarCambioUnidad();
   let mom = 'inicio'; document.querySelectorAll('#mom button').forEach(b => b.onclick = () => { mom = b.dataset.m; document.querySelectorAll('#mom button').forEach(x => x.classList.toggle('on', x === b)); });
   $('#gsv').onclick = async () => { const odo = $('#odo').value ? +$('#odo').value : null, c = cap(), f = get();
     if (!odo) return $('#ge').textContent = 'Escribe los kilómetros del tablero';
@@ -581,11 +767,13 @@ async function agendarHoja(dia, hora) {
   const [us, uh] = await Promise.all([unidades(), miUnidadHoy()]);
   const def = uh || LS.get('esto_unidad', '');
   hoja('<h2 style="margin-top:0">Apartar lavado</h2><p><b>' + fCorta(dia) + ' · ' + hora + '</b></p>' +
-    '<label>Unidad</label><select id="au">' + us.map(u => '<option' + (u.numero == def ? ' selected' : '') + '>' + u.numero + '</option>').join('') + '</select>' +
+    (esOperador() ? unidadFija(uh, 'au') : '<label>Unidad</label><select id="au">' + us.map(u => '<option' + (u.numero == def ? ' selected' : '') + '>' + u.numero + '</option>').join('') + '</select>') +
     '<label>Nombre</label><input value="' + esc(E.yo.rol === 'operador' ? E.yo.nombre : 'Operador que traiga la unidad') + '" disabled>' +
     '<p class="mut" style="margin-top:8px">El lavador verá tu nombre y tu unidad. Llega a tu hora.</p><p class="err" id="ae"></p>' +
     '<div class="g2"><button class="sec" data-cerrar>Cancelar</button><button id="ok">Confirmar</button></div>', (el, cerrar) => {
-      el.querySelector('#ok').onclick = async () => { el.querySelector('#ok').disabled = true;
+      el.querySelectorAll('[data-cu]').forEach(b => b.onclick = () => { cerrar(); cambiarUnidadHoja(); });
+      el.querySelector('#ok').onclick = async () => { if (!el.querySelector('#au').value) return el.querySelector('#ae').textContent = 'Primero toca "Cambiar unidad" y escribe tu unidad';
+        el.querySelector('#ok').disabled = true;
         try { await API.agendar(dia, hora, +el.querySelector('#au').value); LS.set('esto_unidad', +el.querySelector('#au').value); cerrar(); toast('¡Listo! Tu lavado quedó apartado'); ir(); }
         catch (e) { el.querySelector('#ae').textContent = e.message; el.querySelector('#ok').disabled = false; } }; });
 }
@@ -610,7 +798,8 @@ function difChip(p, g) {
 async function vVueltas(sub) {
   const f = /^\d{4}-\d\d-\d\d/.test(sub || '') ? sub.slice(0, 10) : hoy();
   const a = lunes(f), b = addD(a, 6);
-  let [cor, km] = await Promise.all([API.corridas(f, E.yo.clave), API.misKm(esMando() ? f : a, esMando() ? f : b)]);
+  let [cor, km, us] = await Promise.all([API.corridas(f, E.yo.clave), API.misKm(esMando() ? f : a, esMando() ? f : b), unidades()]);
+  const UM = Object.fromEntries(us.map(u => [u.numero, u])), lts = c => (+c.km_programado || 0) / metaU(UM[c.unidad]);
   const q = (LS.get('esto_q', '') || '').toLowerCase();
   let h = '<h2>' + (esMando() ? 'Rol del día' : 'Mis vueltas') + '</h2><div class="fila" style="margin-bottom:12px"><button class="sec mini" onclick="location.hash=\'vueltas/' + addD(f, -1) + '\'">‹</button><div class="f" style="text-align:center;font-weight:700">' + (f === hoy() ? 'Hoy, ' : '') + fCorta(f) + '</div><button class="sec mini" onclick="location.hash=\'vueltas/' + addD(f, 1) + '\'">›</button></div>';
   if (esMando()) { h += '<input id="q" placeholder="Buscar operador, unidad o ruta" value="' + esc(q) + '" style="margin-bottom:12px">';
@@ -618,7 +807,10 @@ async function vVueltas(sub) {
   const delDia = km.filter(x => x.fecha === f && (!esMando() || !q || cor.some(c => c.clave === x.clave)));
   const kp = esMando() && !q ? delDia.reduce((s, x) => s + +x.km_programado, 0) : cor.reduce((s, c) => s + (+c.km_programado || 0), 0);
   const conGps = delDia.filter(x => x.km_gps != null), kg = conGps.length ? conGps.reduce((s, x) => s + +x.km_gps, 0) : null;
-  h += '<div class="c dest"><div class="fila"><div class="f"><div class="mut">Programados</div><div class="big num" style="font-size:26px">' + n1(kp) + '</div></div>' +
+  const lt = cor.reduce((s, c) => s + lts(c), 0);
+  h += (cor.length ? '<div class="c"><div class="fila"><div class="f"><div class="mut">' + (esMando() && !q ? 'Primeras 80 vueltas' : 'Diésel esperado') + '</div><div class="big num" style="font-size:26px">' + n1(lt) + ' L</div></div>' +
+      '<div class="f"><div class="mut">Para</div><div class="big num" style="font-size:26px">' + n1(cor.reduce((s, c) => s + (+c.km_programado || 0), 0)) + ' km</div></div></div><p class="mut" style="margin-top:6px">Litros = km ÷ la meta de rendimiento de la ruta de cada unidad.</p></div>' : '') +
+    '<div class="c dest"><div class="fila"><div class="f"><div class="mut">Programados</div><div class="big num" style="font-size:26px">' + n1(kp) + '</div></div>' +
     '<div class="f"><div class="mut">GPS</div><div class="big num" style="font-size:26px">' + (kg != null ? n1(kg) : '<span class="mut" style="font-size:15px;font-weight:600">' + (f >= hoy() ? 'Llega mañana' : 'Pendiente') + '</span>') + '</div></div>' +
     '<div style="text-align:right"><div class="mut">Diferencia</div>' + (difChip(kp, kg) || '<span class="mut">—</span>') + '</div></div>' +
     '<p class="mut" style="margin-top:8px">Programado: lo que dice tu rol. GPS: lo que de verdad recorrió la unidad; se sube al día siguiente.</p></div>';
@@ -633,7 +825,7 @@ async function vVueltas(sub) {
     }
   }
   h += '<h3>Vueltas</h3>' + (cor.length ? '<div class="c lista">' + cor.map(c => '<div><div style="width:50px;font-weight:700" class="num">' + (hm(c.hora) || '—') + '</div><div class="f"><b>' + esc(c.ruta) + '</b><div class="mut">U ' + (c.unidad || '—') + ' · ' + esc(c.tipo || '') + ' ' + esc(c.tipo_ruta || '') + (c.nom ? ' · ' + esc(corto(c.nom)) : '') + (c.proxima_ruta ? '<br>Después: ' + esc(c.proxima_ruta) : '') + '</div></div>' +
-    '<div style="text-align:right" class="num"><b>' + n1(c.km_programado) + '</b><div class="mut">km</div></div></div>').join('') + '</div>' : '<div class="vacio">No hay vueltas cargadas para este día.</div>');
+    '<div style="text-align:right;white-space:nowrap" class="num"><b>' + n1(c.km_programado) + ' km</b><div class="mut">' + n1(lts(c)) + ' L</div></div></div>').join('') + '</div>' : '<div class="vacio">No hay vueltas cargadas para este día.</div>');
   if (esMando() && !q) h += '<p class="mut">Mostrando las primeras 80. Usa el buscador para filtrar.</p>';
   $('#m').innerHTML = h;
   const qi = $('#q'); if (qi) qi.onchange = () => { LS.set('esto_q', qi.value); ir(); };
@@ -642,7 +834,7 @@ async function vVueltas(sub) {
 /* ---------- MÁS ---------- */
 async function vMas() {
   const it = [['guia', 'Guía del servicio', 'Cómo funciona el servicio y las reglas'], ['bono', 'Calcula tu bono', 'Mira cuánto llevas de tu bono']];
-  if (esMando()) it.push(['rend', 'Rendimiento de operadores', 'Km/l de todos, semáforo y tickets contra tags'], ['reportes', 'Reportes', 'Lo que reportan operadores y lavador'], ['config', 'Configurar lavado', 'Horario, minutos por unidad y cupo'], ['exportar', 'Descargar datos en Excel', 'Todo lo que registran los operadores']);
+  if (esMando()) it.push(['rend', 'Rendimiento de operadores', 'Km/l de todos, semáforo y tickets contra tags'], ['reportes', 'Reportes', 'Lo que reportan operadores y lavador'], ['config', 'Configurar lavado', 'Horario, minutos por unidad y cupo'], ['exportar', 'Descargar datos en Excel', 'Todo lo que registran los operadores'], ['bitacora', 'Cambios y bitácora', 'Cambios de unidad, archivos subidos y movimientos']);
   if (E.yo.rol === 'lavador') it.push(['reportes', 'Mis reportes', 'Lo que has reportado']);
   if (E.yo.rol === 'taller') it.length = 0;
   if (E.yo.rol === 'admin') it.push(['usuarios', 'Usuarios y operadores', 'Alta de operadores uno por uno, contraseñas, bajas'], ['subir', 'Subir archivos', 'Operadores, horario del día, km del GPS y tags de la gasolinera'], ['tanques', 'Capacidad de tanques', 'Litros por unidad para la aguja'], ['editar', 'Editar guía y bonos', 'Textos, criterios, pesos y meta km/l']);
@@ -661,17 +853,21 @@ async function vGuia() {
 }
 async function vBono() {
   const a = lunes(hoy()), b = addD(a, 6);
-  const [cr, rend] = await Promise.all([API.criterios(), esMando() ? [] : API.rendimiento(a, b)]);
-  const r = rend.find(x => x.clave === E.yo.clave); const sel = LS.get('esto_bono', {});
+  const [cr, rend, us, uh] = await Promise.all([API.criterios(), esMando() ? [] : rendSemana(a), unidades(), miUnidadHoy()]);
+  const r = rend.find(x => x.clave === E.yo.clave), sel = LS.get('esto_bono2', {});
+  const uR = (r && unidadDe(us, r.unidades)) || us.find(u => u.numero == uh);
   const pesoT = cr.reduce((s, c) => s + +c.peso, 0) || 100;
-  const auto = r && r.km_l ? Math.min(1, r.km_l / meta()) : 0;
-  const pinta = () => { let tot = 0; cr.forEach((c, i) => { const v = c.fuente === 'rendimiento' ? auto : (sel[i] ?? 1); tot += v * c.peso; });
-    $('#bt').textContent = Math.round(tot / pesoT * 100) + ' %'; $('#bb').style.width = Math.round(tot / pesoT * 100) + '%'; };
-  $('#m').innerHTML = '<h2>Calcula tu bono</h2><div class="c dest" style="text-align:center"><div class="mut">Tu bono estimado</div><div class="big" id="bt">—</div><div class="bar" style="margin-top:8px"><i id="bb"></i></div><p class="mut" style="margin-top:8px">Es una estimación para que sepas dónde estás. El cálculo oficial lo hace supervisión.</p></div>' +
+  const bd = bonoDiesel(r, uR), auto = bd && (bd.cerrada ? bd.cumple : bd.dif > 0) ? 1 : 0;
+  const pinta = () => { let tot = 0; cr.forEach(c => { tot += (c.fuente === 'rendimiento' ? auto : nz(sel[c.nombre], 1)) * c.peso; });
+    const p = Math.round(tot / pesoT * 100); $('#bt').textContent = p + ' %'; $('#bb').style.width = p + '%'; };
+  $('#m').innerHTML = '<h2>Calcula tu bono</h2><div class="c dest" style="text-align:center"><div class="mut">Llevas de tu bono</div><div class="big" id="bt">—</div><div class="bar" style="margin-top:8px"><i id="bb"></i></div>' +
+    '<p class="mut" style="margin-top:8px">Es una estimación para que sepas dónde estás. El cálculo oficial lo hace supervisión. El bono se paga cada semana.</p></div>' +
+    '<div class="aviso"><b>Para tener bono también necesitas:</b><ul class="rombos" style="margin-top:6px"><li>Puntualidad de inicio al 100%</li><li>Rendimiento mínimo del 93% de tu ruta</li><li>Sin quejas de usuarios, cliente o supervisor</li></ul></div>' +
     cr.map((c, i) => '<div class="c"><div class="fila"><div class="f"><b>' + esc(c.nombre) + '</b><div class="mut">' + esc(c.descripcion || '') + '</div></div><span class="chip">' + n1(c.peso) + '%</span></div>' +
-      (c.fuente === 'rendimiento' ? '<p style="margin-top:8px">Se calcula solo: <b>' + n2(r && r.km_l) + ' km/l</b> de ' + n1(meta()) + ' → <b>' + Math.round(auto * 100) + '%</b></p>' :
-        '<div class="seg" style="margin:10px 0 0">' + [[1, 'Cumplí'], [.5, 'A medias'], [0, 'No']].map(([v, t]) => '<button data-i="' + i + '" data-v="' + v + '" class="' + ((sel[i] ?? 1) == v ? 'on' : '') + '">' + t + '</button>').join('') + '</div>') + '</div>').join('');
-  document.querySelectorAll('[data-i]').forEach(bt => bt.onclick = () => { sel[bt.dataset.i] = +bt.dataset.v; LS.set('esto_bono', sel); document.querySelectorAll('[data-i="' + bt.dataset.i + '"]').forEach(x => x.classList.toggle('on', x === bt)); pinta(); });
+      (c.fuente === 'rendimiento' ? (bd ? (bd.cerrada ? '<p style="margin-top:8px">Te tocaban <b>' + Math.round(bd.permitido) + ' L</b> y gastaste <b>' + Math.round(bd.litros) + ' L</b> → ' + (auto ? '<b class="ok">cumples</b>' : '<b class="mal">te pasaste ' + Math.round(-bd.dif) + ' L</b>') + '</p>'
+          : '<p style="margin-top:8px">Se cierra el lunes al llenar. Para cumplir, que le entren máximo <b>' + Math.max(0, Math.round(bd.dif)) + ' L</b> (te tocan ' + Math.round(bd.permitido) + ' L hasta hoy y cargaste ' + Math.round(bd.litros) + ' L entre semana).</p>') : '<p class="mut" style="margin-top:8px">Sin vueltas esta semana todavía.</p>') :
+        '<div class="seg" style="margin:10px 0 0">' + [[1, 'Cumplí'], [0, 'No cumplí']].map(([v, t]) => '<button data-i="' + i + '" data-v="' + v + '" class="' + (nz(sel[c.nombre], 1) == v ? 'on' : '') + '">' + t + '</button>').join('') + '</div>') + '</div>').join('');
+  document.querySelectorAll('[data-i]').forEach(bt => bt.onclick = () => { const c = cr[+bt.dataset.i]; sel[c.nombre] = +bt.dataset.v; LS.set('esto_bono2', sel); document.querySelectorAll('[data-i="' + bt.dataset.i + '"]').forEach(x => x.classList.toggle('on', x === bt)); pinta(); });
   pinta();
 }
 /* ---------- PANEL DE MANDO ---------- */
@@ -679,16 +875,16 @@ function vPanel() { location.hash = 'mas'; }
 async function vRendTodos(sub) {
   if (!esMando()) return vMas();
   const per = sub === 'pasada' ? -7 : 0, a = addD(lunes(hoy()), per), b = addD(a, 6);
-  const [rend, tks, tags] = await Promise.all([API.rendimiento(a, b), API.tickets(a, b), API.tags(a, b)]);
+  const [rend, tks, tags, us] = await Promise.all([rendSemana(a), API.tickets(a, b), API.tags(a, b), unidades()]);
   const conDato = rend.filter(x => x.km_l != null);
   const prom = conDato.length ? conDato.reduce((s, x) => s + +x.km_l, 0) / conDato.length : null;
   const porU = {}; tks.forEach(t => { (porU[t.unidad] = porU[t.unidad] || [0, 0])[0] += +t.litros; }); tags.forEach(t => { (porU[t.unidad] = porU[t.unidad] || [0, 0])[1] += +t.litros; });
   const dif = Object.entries(porU).filter(([, v]) => v[0] && v[1] && Math.abs(v[0] - v[1]) > 5).sort((x, y) => Math.abs(y[1][0] - y[1][1]) - Math.abs(x[1][0] - x[1][1]));
   $('#m').innerHTML = '<h2>Rendimiento de operadores</h2><div class="seg"><button class="' + (per ? '' : 'on') + '" onclick="location.hash=\'rend\'">Esta semana</button><button class="' + (per ? 'on' : '') + '" onclick="location.hash=\'rend/pasada\'">Semana pasada</button></div>' +
-    '<div class="g2"><div class="c"><div class="mut">Promedio km/l</div><div class="big ' + semaforo(prom, meta(), tol()) + '">' + n2(prom) + '</div></div><div class="c"><div class="mut">Con datos</div><div class="big">' + conDato.length + '<span class="mut" style="font-size:14px"> / ' + rend.length + '</span></div></div></div>' +
+    '<div class="g2"><div class="c"><div class="mut">Promedio km/l</div><div class="big">' + n2(prom) + '</div></div><div class="c"><div class="mut">Con datos</div><div class="big">' + conDato.length + '<span class="mut" style="font-size:14px"> / ' + rend.length + '</span></div></div></div>' +
     (dif.length ? '<h3>Tickets contra tags BUAP (diferencia &gt; 5 L)</h3><div class="c"><table class="tabla"><tr><th>Unidad</th><th class="r">Tickets</th><th class="r">Tags</th><th class="r">Dif.</th></tr>' + dif.map(([u, v]) => '<tr><td>' + u + '</td><td class="r">' + n1(v[0]) + '</td><td class="r">' + n1(v[1]) + '</td><td class="r mal">' + n1(v[0] - v[1]) + '</td></tr>').join('') + '</table></div>' : '') +
-    '<h3>' + fCorta(a) + ' a ' + fCorta(b) + ' · de menor a mayor</h3><div class="c"><input id="q" placeholder="Buscar operador" style="margin-bottom:8px"><table class="tabla" id="tb"><tr><th>Operador</th><th class="r">Km</th><th class="r">Litros</th><th class="r">km/l</th></tr>' +
-    rend.map(x => '<tr data-n="' + esc((x.nombre + ' ' + x.unidades).toLowerCase()) + '"><td>' + esc(corto(x.nombre)) + '<div class="mut">U ' + esc(x.unidades || '—') + '</div></td><td class="r num">' + n1(x.km_odometro || x.km_gps || x.km_real || x.km_programado) + '</td><td class="r num">' + n1(x.litros_tag || x.litros_ticket) + '</td><td class="r"><span class="chip ' + semaforo(x.km_l, meta(), tol()) + '">' + n2(x.km_l) + '</span></td></tr>').join('') + '</table></div>';
+    '<h3>' + fCorta(a) + ' a ' + fCorta(b) + ' · de menor a mayor</h3>' + (per ? '' : '<p class="mut">Semana abierta: los litros son solo lo cargado entre semana, el km/l real sale el lunes al llenar.</p>') + '<div class="c"><input id="q" placeholder="Buscar operador" style="margin-bottom:8px"><table class="tabla" id="tb"><tr><th>Operador</th><th class="r">Km</th><th class="r">Litros</th><th class="r">km/l</th></tr>' +
+    rend.map(x => '<tr data-n="' + esc((x.nombre + ' ' + x.unidades).toLowerCase()) + '"><td>' + esc(corto(x.nombre)) + '<div class="mut">U ' + esc(x.unidades || '—') + '</div></td><td class="r num">' + n1(x.km_odometro || x.km_gps || x.km_real || x.km_programado) + '</td><td class="r num">' + n1(x.litros_tag || x.litros_ticket) + '</td><td class="r"><span class="chip ' + semU(x.km_l, unidadDe(us, x.unidades)) + '">' + n2(x.km_l) + '</span><div class="mut">meta ' + n2(metaU(unidadDe(us, x.unidades))) + '</div></td></tr>').join('') + '</table></div>';
   $('#q').oninput = () => { const q = $('#q').value.toLowerCase(); document.querySelectorAll('#tb tr[data-n]').forEach(t => t.style.display = t.dataset.n.includes(q) ? '' : 'none'); };
 }
 async function vReportes() {
@@ -799,7 +995,7 @@ async function vTallerOperador(fs, us, uh, aviso) {
   if (abiertasU.length) h += '<h3>Ya reportado en la unidad ' + miU + '</h3>' + abiertasU.map(f => '<div class="c"><div class="fila"><div class="f"><b>' + esc(catNom(f.categoria)) + '</b><div>“' + esc(f.descripcion) + '”</div><div class="mut">' + (f.confirmaciones + 1) + ' reporte(s) · ' + EST_F[f.estado][0] + '</div></div></div>' +
     (f.clave !== E.yo.clave ? '<button class="sec" style="margin-top:10px" data-conf="' + f.id + '">Sigue fallando · yo también lo veo</button>' : '') + '</div>').join('') + '<p class="mut" style="margin-bottom:6px">Si es la misma falla, toca “Sigue fallando”. Si es otra, repórtala abajo.</p>';
   h += '<h3>Reportar una falla</h3><div class="c">' +
-    '<div class="paso"><em>1</em>¿Qué unidad?</div><select id="fu">' + us.map(u => '<option' + (u.numero == miU ? ' selected' : '') + '>' + u.numero + '</option>').join('') + '</select>' +
+    '<div class="paso"><em>1</em>¿Qué unidad?</div>' + (esOperador() ? unidadFija(uh, 'fu') : '<select id="fu">' + us.map(u => '<option' + (u.numero == miU ? ' selected' : '') + '>' + u.numero + '</option>').join('') + '</select>') +
     '<div class="paso"><em>2</em>¿Qué está fallando?</div><div class="g2" id="fc">' + CAT.map(([k, t, d]) => '<button class="sec" data-c="' + k + '" style="border-radius:16px;text-align:left;padding:10px 12px;line-height:1.25"><b style="display:block">' + t + '</b><span style="font-weight:400;font-size:12px;color:var(--gris)">' + d + '</span></button>').join('') + '</div>' +
     '<div class="paso"><em>3</em>Cuéntalo con tus palabras</div><textarea id="fd" rows="3" maxlength="500" placeholder="Ej. Suena del costado derecho cuando freno"></textarea>' +
     '<div class="paso"><em>4</em>¿Puede circular?</div><div id="fg" style="display:grid;gap:8px">' + Object.entries(GRAV).reverse().map(([k, [t]], i) => '<button class="sec' + (i === 0 ? ' on' : '') + '" data-g="' + k + '">' + t + '</button>').join('') + '</div>' +
@@ -812,7 +1008,8 @@ async function vTallerOperador(fs, us, uh, aviso) {
   const sel = { c: null, g: 'normal', v: '1', h: 'hoy' };
   const grupo = (id, k) => document.querySelectorAll('#' + id + ' button').forEach(b => b.onclick = () => { sel[k] = b.dataset[k]; document.querySelectorAll('#' + id + ' button').forEach(x => x.classList.toggle('on', x === b)); });
   grupo('fc', 'c'); grupo('fg', 'g'); grupo('fv', 'v'); grupo('fh', 'h');
-  $('#fok').onclick = async () => { const d = $('#fd').value.trim();
+  activarCambioUnidad();
+  $('#fok').onclick = async () => { const d = $('#fd').value.trim(); if (!$('#fu').value) return $('#fe').textContent = 'Primero toca "Cambiar unidad" y escribe tu unidad';
     if (!sel.c) return $('#fe').textContent = 'Toca qué está fallando (paso 2)'; if (d.length < 3) return $('#fe').textContent = 'Escribe qué pasa (paso 3)';
     try { $('#fok').disabled = true; await API.reportarFalla(+$('#fu').value, sel.c, d, sel.g, sel.v, sel.h); LS.set('esto_unidad', +$('#fu').value); toast('¡Reporte enviado al taller!'); ir(); } catch (e) { $('#fe').textContent = e.message; $('#fok').disabled = false; } };
   document.querySelectorAll('[data-conf]').forEach(b => b.onclick = async () => { try { await API.confirmarFalla(+b.dataset.conf); toast('Gracias, quedó registrado'); ir(); } catch (e) { toast(e.message); } });
@@ -852,7 +1049,7 @@ function xlsxBlob(hojas) {
   const hojaXml = h => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>' +
     '<cols>' + (h.anchos || []).map((w, i) => '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>').join('') + '</cols><sheetData>' +
     h.filas.map((r, i) => '<row r="' + (i + 1) + '">' + r.map((v, j) => { const ref = col(j) + (i + 1), st = i === 0 ? ' s="1"' : ' s="2"';
-      return typeof v === 'number' && isFinite(v) ? '<c r="' + ref + '"' + st + '><v>' + v + '</v></c>' : '<c r="' + ref + '"' + st + ' t="inlineStr"><is><t xml:space="preserve">' + X(v ?? '') + '</t></is></c>'; }).join('') + '</row>').join('') +
+      return typeof v === 'number' && isFinite(v) ? '<c r="' + ref + '"' + st + '><v>' + v + '</v></c>' : '<c r="' + ref + '"' + st + ' t="inlineStr"><is><t xml:space="preserve">' + X(nz(v, '')) + '</t></is></c>'; }).join('') + '</row>').join('') +
     '</sheetData>' + (h.filas.length > 1 ? '<autoFilter ref="A1:' + col(h.filas[0].length - 1) + h.filas.length + '"/>' : '') + '</worksheet>';
   const files = [
     ['[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
@@ -891,7 +1088,7 @@ function xlsxBlob(hojas) {
 async function vExportar() {
   if (!esMando()) return vMas();
   const ini = hoy().slice(0, 8) + '01';
-  $('#m').innerHTML = '<h2>Descargar datos en Excel</h2><div class="c dest"><p class="mut">Todo lo que registran los operadores en el periodo: resumen por operador, tickets, tanque y odómetro, km programados contra GPS, lavados, taller y reportes.</p>' +
+  $('#m').innerHTML = '<h2>Descargar datos en Excel</h2><div class="c dest"><p class="mut">Todo lo que registran los operadores en el periodo: resumen por operador, tickets, tanque y odómetro, km programados contra GPS, lavados, taller, reportes, cambios de unidad y bitácora de archivos subidos.</p>' +
     '<div class="g2"><div><label>Desde</label><input id="xa" type="date" value="' + ini + '"></div><div><label>Hasta</label><input id="xb" type="date" value="' + hoy() + '"></div></div>' +
     '<div class="seg" style="margin-top:12px" id="xr">' + [['sem', 'Esta semana'], ['mes', 'Este mes'], ['pas', 'Mes pasado']].map(([k, t]) => '<button data-r="' + k + '">' + t + '</button>').join('') + '</div>' +
     '<p class="err" id="xe"></p><button id="xg">Descargar Excel</button></div>';
@@ -905,7 +1102,7 @@ async function vExportar() {
     $('#xg').disabled = false; $('#xg').textContent = 'Descargar Excel'; };
 }
 async function excelTodo(a, z) {
-  const [d, rend, km, ops] = await Promise.all([API.exportar(a, z), API.rendimiento(a, z), API.misKm(a, z), API.operadores()]);
+  const [d, rend, km, ops, cs, bs] = await Promise.all([API.exportar(a, z), API.rendimiento(a, z), API.misKm(a, z), API.operadores(), API.cambiosUnidad(a, z), API.bitacora(a, z)]);
   const O = Object.fromEntries(ops.map(o => [o.clave, o])), nom = c => (O[c] || {}).nombre || '';
   const fh = t => t ? new Date(t).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : '';
   const cuenta = (arr, c) => arr.filter(x => x.clave === c).length;
@@ -936,10 +1133,73 @@ async function excelTodo(a, z) {
     { nombre: 'Reportes', anchos: [16, 22, 8, 28, 50, 10],
       filas: [['Fecha', 'Tipo', 'Unidad', 'Quién reporta', 'Detalle', 'Atendido'], ...d.reportes.map(r => [fh(r.creado), T[r.tipo] || r.tipo, r.unidad || '', r.autor || '', r.texto || '', r.atendido ? 'Sí' : 'No'])] },
     { nombre: 'Tickets vs tags', anchos: [9, 14, 14, 12],
-      filas: [['Unidad', 'Litros tickets', 'Litros tags BUAP', 'Diferencia'], ...Object.entries(porU).sort((x, y) => x[0] - y[0]).map(([u, v]) => [+u, n1r(v[0]), n1r(v[1]), n1r(v[0] - v[1])])] }]);
+      filas: [['Unidad', 'Litros tickets', 'Litros tags BUAP', 'Diferencia'], ...Object.entries(porU).sort((x, y) => x[0] - y[0]).map(([u, v]) => [+u, n1r(v[0]), n1r(v[1]), n1r(v[0] - v[1])])] },
+    ...hojasBitacora(cs, bs)]);
   descargar(blob, 'ER_Operadores_' + a + '_a_' + z + '.xlsx');
 }
 const n1r = v => Math.round(+v * 10) / 10;
+
+/* ---------- UNIDAD FIJA: cambiarla pide confirmación y queda registrada ---------- */
+const esOperador = () => E.yo && E.yo.rol === 'operador';
+function unidadFija(u, id) {
+  return '<div class="fila" style="background:var(--suave);border-radius:16px;padding:12px 14px;margin:4px 0 6px"><div class="f"><div class="mut">Tu unidad de hoy</div>' +
+    '<div style="font-size:28px;font-weight:800">' + (u || 'Sin asignar') + '</div></div><button class="sec mini" data-cu>Cambiar unidad</button></div>' +
+    '<input type="hidden" id="' + id + '" value="' + (u || '') + '">';
+}
+function activarCambioUnidad(raiz) { (raiz || document).querySelectorAll('[data-cu]').forEach(b => b.onclick = () => cambiarUnidadHoja()); }
+async function cambiarUnidadHoja() {
+  const actual = await miUnidadHoy();
+  const MOT = ['Me asignaron otra unidad', 'Mi unidad está en taller', 'Cubro a un compañero', 'Otro motivo'];
+  hoja('<h2 style="margin-top:0">Cambiar de unidad</h2><p>Hoy tienes la <b>' + (actual || 'ninguna') + '</b>.</p>' +
+    '<label>¿Qué unidad traes ahora?</label><input id="cu_n" type="number" inputmode="numeric" placeholder="Ej. 8045">' +
+    '<label>¿Por qué?</label><div id="cu_m" style="display:grid;gap:8px">' + MOT.map((m, i) => '<button class="sec" data-m="' + i + '">' + m + '</button>').join('') + '</div>' +
+    '<label>Detalle (opcional)</label><input id="cu_d" maxlength="200" placeholder="Ej. la 8012 se quedó en Capu">' +
+    '<div class="aviso" style="margin-top:12px">Este cambio queda registrado y le llega a supervisión.</div><p class="err" id="cu_e"></p>' +
+    '<div class="g2"><button class="sec" data-cerrar>Cancelar</button><button id="cu_ok">Confirmar cambio</button></div>', (el, cerrar) => {
+      let mot = null;
+      el.querySelectorAll('#cu_m button').forEach(b => b.onclick = () => { mot = MOT[+b.dataset.m]; el.querySelectorAll('#cu_m button').forEach(x => x.classList.toggle('on', x === b)); });
+      el.querySelector('#cu_ok').onclick = async () => {
+        const n = +el.querySelector('#cu_n').value, d = el.querySelector('#cu_d').value.trim(), err = el.querySelector('#cu_e');
+        if (!n) return err.textContent = 'Escribe el número de la unidad';
+        if (!mot) return err.textContent = 'Toca por qué cambias de unidad';
+        if (mot === 'Otro motivo' && !d) return err.textContent = 'Escribe el detalle del motivo';
+        if (!confirm('¿Confirmas que hoy traes la unidad ' + n + '?')) return;
+        try { el.querySelector('#cu_ok').disabled = true; await API.cambiarUnidad(n, mot + (d ? ' · ' + d : '')); cerrar(); toast('Listo: ahora traes la unidad ' + n); ir(); }
+        catch (e) { err.textContent = e.message; el.querySelector('#cu_ok').disabled = false; } };
+    });
+}
+
+/* ---------- CAMBIOS Y BITÁCORA (mandos) ---------- */
+async function vBitacora() {
+  if (!esMando()) return vMas();
+  const a = LS.get('esto_bit_a', addD(hoy(), -7)), z = LS.get('esto_bit_z', hoy());
+  const [cs, bs] = await Promise.all([API.cambiosUnidad(a, z), API.bitacora(a, z)]);
+  const sinVer = cs.filter(c => !c.visto).length;
+  const fh = t => new Date(t).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  $('#m').innerHTML = '<h2>Cambios y bitácora</h2>' +
+    '<div class="c dest"><div class="g2"><div><label style="margin-top:0">Desde</label><input id="ba" type="date" value="' + a + '"></div><div><label style="margin-top:0">Hasta</label><input id="bz" type="date" value="' + z + '"></div></div>' +
+    '<button id="bx" style="margin-top:12px">Descargar Excel</button></div>' +
+    '<h3>Cambios de unidad · ' + cs.length + (sinVer ? ' · <span class="mal">' + sinVer + ' nuevos</span>' : '') + '</h3>' +
+    (cs.length ? '<div class="c lista">' + cs.map(c => '<div><div class="f"><b>' + esc(corto(c.nombre || '')) + '</b> <span class="mut">(' + c.clave + ')</span>' + (c.visto ? '' : ' <span class="chip mal">NUEVO</span>') +
+      '<div style="font-size:18px;font-weight:800">' + (c.unidad_anterior || '—') + ' → ' + c.unidad_nueva + '</div><div class="mut">' + esc(c.motivo) + ' · ' + fh(c.creado) + '</div></div></div>').join('') + '</div>'
+      : '<div class="vacio">Sin cambios de unidad en estas fechas</div>') +
+    '<h3>Bitácora · archivos y movimientos</h3>' +
+    (bs.length ? '<div class="c lista">' + bs.slice(0, 150).map(b => '<div><div class="f"><b>' + esc(b.tipo) + '</b><div>' + esc(b.detalle || '') + '</div><div class="mut">' + esc(b.quien || '') + ' · ' + fh(b.creado) + '</div></div></div>').join('') + '</div>'
+      : '<div class="vacio">Sin movimientos en estas fechas</div>');
+  const rango = () => { LS.set('esto_bit_a', $('#ba').value); LS.set('esto_bit_z', $('#bz').value); vBitacora(); };
+  $('#ba').onchange = rango; $('#bz').onchange = rango;
+  $('#bx').onclick = () => excelBitacora(a, z, cs, bs);
+  if (sinVer) API.marcarVistos().catch(() => {});
+}
+function hojasBitacora(cs, bs) {
+  const fh = t => t ? new Date(t).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : '';
+  return [
+    { nombre: 'Cambios de unidad', anchos: [11, 16, 9, 32, 14, 13, 44],
+      filas: [['Fecha', 'Hora', 'Clave', 'Operador', 'Unidad anterior', 'Unidad nueva', 'Motivo'], ...cs.map(c => [c.fecha, fh(c.creado), c.clave, c.nombre || '', c.unidad_anterior || '', c.unidad_nueva, c.motivo])] },
+    { nombre: 'Bitácora', anchos: [16, 24, 28, 14, 70],
+      filas: [['Fecha y hora', 'Movimiento', 'Quién', 'Perfil', 'Detalle'], ...bs.map(b => [fh(b.creado), b.tipo, b.quien || '', ROLES[b.rol] || b.rol || '', b.detalle || ''])] }];
+}
+function excelBitacora(a, z, cs, bs) { descargar(xlsxBlob(hojasBitacora(cs, bs)), 'Cambios_y_bitacora_' + a + '_a_' + z + '.xlsx'); }
 
 /* ---------- USUARIOS (solo admin) ---------- */
 async function vUsuarios() {
@@ -979,7 +1239,7 @@ async function vUsuarios() {
 
 /* ---------- SUBIR ARCHIVOS (solo admin; la librería de Excel se descarga solo aquí) ---------- */
 function cargarXLSX() { return window.XLSX ? Promise.resolve() : new Promise((ok, no) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload = ok; s.onerror = () => no(new Error('No se pudo cargar el lector de Excel')); document.head.appendChild(s); }); }
-const norm = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+const norm = s => String(nz(s, '')).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 const aHora = v => { if (v == null || v === '' || v === '-') return ''; if (v instanceof Date) return pad(v.getHours()) + ':' + pad(v.getMinutes()); if (typeof v === 'number') { const m = Math.round((v % 1) * 1440); return aHM(m); } const t = String(v).match(/(\d{1,2}):(\d{2})/); return t ? pad(t[1]) + ':' + t[2] : ''; };
 const aFecha = v => { if (v instanceof Date) return iso(v); if (typeof v === 'number') return iso(new Date(Math.round((v - 25569) * 864e5) + new Date().getTimezoneOffset() * 6e4)); const m = String(v || '').match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/); if (m) return (m[3].length === 2 ? '20' + m[3] : m[3]) + '-' + pad(m[2]) + '-' + pad(m[1]); const i = String(v || '').match(/\d{4}-\d\d-\d\d/); return i ? i[0] : null; };
 async function vSubir() {
@@ -1003,7 +1263,7 @@ async function vSubir() {
       filasO = m.slice(hi + 1).filter(r => Number.isInteger(+r[k.cl]) && r[k.cl] !== null && t(r[k.n])).map(r => ({ clave: +r[k.cl], nombre: t(r[k.n]), estatus: t(r[k.e]) || 'Activo', ruta_asignada: t(r[k.r]), busup: t(r[k.b]), unidad_base: t(r[k.u]), jefe_directo: k.j >= 0 ? t(r[k.j]) : null }));
       $('#om').innerHTML = '<b>' + filasO.length + '</b> operadores · <b>' + filasO.filter(o => o.busup).length + '</b> con Busup';
     } catch (e) { $('#om').innerHTML = '<span class="mal">' + esc(e.message) + '</span>'; } };
-  $('#ob').onclick = async () => { $('#ob').disabled = true; try { const r = await API.sincronizarOps(filasO); $('#om').innerHTML = 'Listo ✓ · nuevos: <b>' + r.nuevos + '</b> · actualizados: <b>' + r.actualizados + '</b> · bajas: <b>' + (r.bajas || 0) + '</b>' + ((r.usuarios || []).filter(u => /^\d+$/.test(u.usuario) && filasO.find(o => o.clave === u.clave && o.estatus !== 'Baja')).length ? '<br><span class="warn">Entran con su CLAVE (sin Busup o repetido): ' + r.usuarios.filter(u => /^\d+$/.test(u.usuario) && filasO.find(o => o.clave === u.clave && o.estatus !== 'Baja')).map(u => esc(corto(u.nombre)) + ' ' + u.usuario).join(', ') + '</span>' : ''); } catch (e) { $('#om').innerHTML = '<span class="mal">' + esc(e.message) + '</span>'; $('#ob').disabled = false; } };
+  $('#ob').onclick = async () => { $('#ob').disabled = true; try { const r = await API.sincronizarOps(filasO); API.registrar('Archivo subido', 'DATOS OP · ' + filasO.length + ' operadores · nuevos ' + r.nuevos + ' · actualizados ' + r.actualizados + ' · bajas ' + (r.bajas || 0)).catch(() => {}); $('#om').innerHTML = 'Listo ✓ · nuevos: <b>' + r.nuevos + '</b> · actualizados: <b>' + r.actualizados + '</b> · bajas: <b>' + (r.bajas || 0) + '</b>' + ((r.usuarios || []).filter(u => /^\d+$/.test(u.usuario) && filasO.find(o => o.clave === u.clave && o.estatus !== 'Baja')).length ? '<br><span class="warn">Entran con su CLAVE (sin Busup o repetido): ' + r.usuarios.filter(u => /^\d+$/.test(u.usuario) && filasO.find(o => o.clave === u.clave && o.estatus !== 'Baja')).map(u => esc(corto(u.nombre)) + ' ' + u.usuario).join(', ') + '</span>' : ''); } catch (e) { $('#om').innerHTML = '<span class="mal">' + esc(e.message) + '</span>'; $('#ob').disabled = false; } };
   let filasH = null, nomH = '';
   $('#ha').onchange = async ev => { const f = ev.target.files[0]; if (!f) return; $('#hm').textContent = 'Leyendo…';
     try { await cargarXLSX(); const wb = XLSX.read(await f.arrayBuffer(), { cellDates: true });
@@ -1021,12 +1281,12 @@ async function vSubir() {
   $('#ga').onchange = async ev => { const f = ev.target.files[0]; if (!f) return; $('#gm').innerHTML = '<p class="mut">Leyendo…</p>';
     try { await cargarXLSX(); const wb = XLSX.read(await f.arrayBuffer(), { cellDates: true }); const m = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: null });
       const hi = m.findIndex(r => r.filter(c => /unidad|vehic|econ|km|kilom|distan|fecha|objeto/.test(norm(c))).length >= 2); if (hi < 0) throw new Error('No encontré encabezados de unidad y kilómetros');
-      const H = m[hi].map(c => String(c ?? '')); const guess = re => H.findIndex(h => re.test(norm(h)));
+      const H = m[hi].map(c => String(nz(c, ''))); const guess = re => H.findIndex(h => re.test(norm(h)));
       const sel = (id, t, g, vacio) => '<label>' + t + '</label><select id="' + id + '">' + (vacio ? '<option value="-1">(no trae, usar la fecha de arriba)</option>' : '') + H.map((h, i) => '<option value="' + i + '"' + (i === g ? ' selected' : '') + '>' + esc(h || 'Columna ' + (i + 1)) + '</option>').join('') + '</select>';
       $('#gm').innerHTML = sel('gu', 'Columna de unidad', guess(/unidad|vehic|econ|objeto|nombre/)) + sel('gk', 'Columna de kilómetros', guess(/km|kilom|distan|recorr/)) + sel('gd', 'Columna de fecha', guess(/fecha|dia|date/), true) + '<p class="mut" id="gr" style="margin-top:8px"></p>';
       const arma = () => { const u = +$('#gu').value, k = +$('#gk').value, d = +$('#gd').value, porDia = {};
-        m.slice(hi + 1).forEach(r => { const un = parseInt(String(r[u] ?? '').match(/\d{4}/)?.[0]), km = +String(r[k] ?? '').replace(/,/g, '').replace(/[^\d.]/g, ''), fe = d >= 0 ? aFecha(r[d]) : $('#gf').value;
-          if (un && fe && km >= 0 && String(r[k] ?? '') !== '') porDia[fe + '|' + un] = (porDia[fe + '|' + un] || 0) + km; });
+        m.slice(hi + 1).forEach(r => { const un = parseInt((String(nz(r[u], '')).match(/\d{4}/) || [])[0]), km = +String(nz(r[k], '')).replace(/,/g, '').replace(/[^\d.]/g, ''), fe = d >= 0 ? aFecha(r[d]) : $('#gf').value;
+          if (un && fe && km >= 0 && String(nz(r[k], '')) !== '') porDia[fe + '|' + un] = (porDia[fe + '|' + un] || 0) + km; });
         filasG = Object.entries(porDia).map(([key, km]) => ({ fecha: key.split('|')[0], unidad: +key.split('|')[1], km: Math.round(km * 10) / 10 }));
         $('#gr').innerHTML = '<b>' + filasG.length + '</b> unidades-día · <b>' + n1(filasG.reduce((s, x) => s + x.km, 0)) + '</b> km · ' + [...new Set(filasG.map(x => fCorta(x.fecha)))].join(', '); $('#gb').disabled = !filasG.length; };
       $('#gm').onchange = arma; $('#gf').onchange = arma; arma(); nomG = f.name;
@@ -1036,11 +1296,11 @@ async function vSubir() {
   $('#ta').onchange = async ev => { const f = ev.target.files[0]; if (!f) return; $('#tm').innerHTML = '<p class="mut">Leyendo…</p>';
     try { await cargarXLSX(); const wb = XLSX.read(await f.arrayBuffer(), { cellDates: true }); const m = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: null });
       const hi = m.findIndex(r => r.filter(c => /unidad|econ|litro|fecha/.test(norm(c))).length >= 2); if (hi < 0) throw new Error('No encontré encabezados de unidad, fecha y litros');
-      const H = m[hi].map(c => String(c ?? '')); const guess = re => H.findIndex(h => re.test(norm(h)));
+      const H = m[hi].map(c => String(nz(c, ''))); const guess = re => H.findIndex(h => re.test(norm(h)));
       const sel = (id, t, g) => '<label>' + t + '</label><select id="' + id + '">' + H.map((h, i) => '<option value="' + i + '"' + (i === g ? ' selected' : '') + '>' + esc(h || 'Columna ' + (i + 1)) + '</option>').join('') + '</select>';
       $('#tm').innerHTML = sel('cu', 'Columna de unidad', guess(/unidad|econ|tag/)) + sel('cfch', 'Columna de fecha', guess(/fecha/)) + sel('cl', 'Columna de litros', guess(/litro|volumen|cantidad/)) + '<p class="mut" id="tr" style="margin-top:8px"></p>';
       const arma = () => { const u = +$('#cu').value, fc = +$('#cfch').value, l = +$('#cl').value;
-        filasT = m.slice(hi + 1).map(r => ({ unidad: parseInt(String(r[u] ?? '').match(/\d{4}/)?.[0]), fecha: aFecha(r[fc]), litros: +String(r[l] ?? '').replace(/[^\d.]/g, '') })).filter(x => x.unidad && x.fecha && x.litros > 0);
+        filasT = m.slice(hi + 1).map(r => ({ unidad: parseInt((String(nz(r[u], '')).match(/\d{4}/) || [])[0]), fecha: aFecha(r[fc]), litros: +String(nz(r[l], '')).replace(/[^\d.]/g, '') })).filter(x => x.unidad && x.fecha && x.litros > 0);
         $('#tr').innerHTML = '<b>' + filasT.length + '</b> cargas · <b>' + n1(filasT.reduce((s, x) => s + x.litros, 0)) + '</b> L'; $('#tb').disabled = !filasT.length; };
       $('#tm').onchange = arma; arma(); nomT = f.name;
     } catch (e) { $('#tm').innerHTML = '<p class="mal">' + esc(e.message) + '</p>'; } };
@@ -1050,7 +1310,7 @@ async function vSubir() {
 /* ---------- arranque ---------- */
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 if (CFG.url) ir();
-else { const go = () => { API = mkDemo(); ir(); };
+else { const go = () => { API = conCache(mkDemo()); ir(); };
   if (window.DEMO) go(); else { const s = document.createElement('script'); s.src = 'demo.js'; s.onload = go; s.onerror = go; document.head.appendChild(s); } }
 </script>
 </body>
